@@ -32,12 +32,15 @@ class EntityService:
             return Entity.create(validated_data)
         else:
             temp_file_processor = TempFile(image_file)
-            entity_data = temp_file_processor.process(
-                parent_id=validated_data.get("parent_id"),
-                label=validated_data.get("label"),
-                description=validated_data.get("description"),
-            )
-            return Entity.create(entity_data)
+            try:
+                entity_data = temp_file_processor.process(
+                    parent_id=validated_data.get("parent_id"),
+                    label=validated_data.get("label"),
+                    description=validated_data.get("description"),
+                )
+                return Entity.create(entity_data)
+            finally:
+                temp_file_processor.remove()
 
     def delete_collection(self):
         """Deletes the entire collection."""

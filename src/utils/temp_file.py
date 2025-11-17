@@ -29,7 +29,7 @@ class TempFile:
     ) -> dict:
         metadata = CLMetaData.from_media(self.path).to_dict()
         return {
-            "label": label or self.image_file.filename,
+            "label": label or os.path.basename(self.path),
             "description": description,
             "parent_id": parent_id,
             "is_collection": False,
