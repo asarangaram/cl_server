@@ -1,0 +1,4 @@
+flask
+flask-smorest
+pydantic
+werkzeug

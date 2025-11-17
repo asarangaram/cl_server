@@ -1,0 +1,13 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cl-server"
+version = "0.1.0"
+dependencies = [
+    "flask",
+    "flask-smorest",
+    "pydantic",
+    "werkzeug",
+]
