@@ -72,6 +72,7 @@ class EntityCreateSchema(BaseModel):
     label: Optional[str] = None
     description: Optional[str] = None
     parent_id: Optional[int] = None
+    is_collection: bool
 
 
 class EntityUpdateSchema(EntityCreateSchema):

@@ -1,14 +1,40 @@
 from ..store.entity import Entity
 from flask_smorest import abort
+from werkzeug.datastructures import FileStorage
+from .temp_file import TempFile
 
 class EntityService:
     def get_entities(self, filter_param=None, search_query=None):
         """Retrieves a paginated list of media entities."""
         return Entity.get_all(filter_param=filter_param, search_query=search_query)
 
-    def create_entity(self, data):
+    def create_entity(self, data, image_file: FileStorage = None):
         """Creates a new entity."""
-        return Entity.create(data.dict())
+        validated_data = data.dict()
+        is_collection = validated_data.get('is_collection')
+
+        # Pre-condition checks
+        if is_collection:
+            if not validated_data.get('label'):
+                abort(400, message="Label is required for a collection.")
+            if image_file:
+                abort(400, message="Image file is not allowed for a collection.")
+        else: # Not a collection
+            if not image_file:
+                abort(400, message="Image file is required for a non-collection entity.")
+
+        # Process and create
+        if is_collection:
+            return Entity.create(validated_data)
+        else:
+            temp_file_processor = TempFile(image_file)
+            entity_data = temp_file_processor.process(
+                parent_id=validated_data.get('parent_id'),
+                label=validated_data.get('label'),
+                description=validated_data.get('description')
+            )
+            return Entity.create(entity_data)
+
 
     def delete_collection(self):
         """Deletes the entire collection."""

@@ -19,7 +19,8 @@ class EntityCollection(MethodView):
     @entity_bp.response(201, Item)
     def post(self, new_entity_data):
         """Created"""
-        return entity_service.create_entity(new_entity_data)
+        image_file = request.files.get('image')
+        return entity_service.create_entity(new_entity_data, image_file)
 
     def delete(self):
         """Deletes the entire collection."""
