@@ -1,7 +1,9 @@
-from ..store.entity import Entity
 from flask_smorest import abort
 from werkzeug.datastructures import FileStorage
-from .temp_file import TempFile
+
+from ..store.entity import Entity
+from ..utils.temp_file import TempFile
+
 
 class EntityService:
     def get_entities(self, filter_param=None, search_query=None):
@@ -11,17 +13,19 @@ class EntityService:
     def create_entity(self, data, image_file: FileStorage = None):
         """Creates a new entity."""
         validated_data = data.dict()
-        is_collection = validated_data.get('is_collection')
+        is_collection = validated_data.get("is_collection")
 
         # Pre-condition checks
         if is_collection:
-            if not validated_data.get('label'):
+            if not validated_data.get("label"):
                 abort(400, message="Label is required for a collection.")
             if image_file:
                 abort(400, message="Image file is not allowed for a collection.")
-        else: # Not a collection
+        else:  # Not a collection
             if not image_file:
-                abort(400, message="Image file is required for a non-collection entity.")
+                abort(
+                    400, message="Image file is required for a non-collection entity."
+                )
 
         # Process and create
         if is_collection:
@@ -29,12 +33,11 @@ class EntityService:
         else:
             temp_file_processor = TempFile(image_file)
             entity_data = temp_file_processor.process(
-                parent_id=validated_data.get('parent_id'),
-                label=validated_data.get('label'),
-                description=validated_data.get('description')
+                parent_id=validated_data.get("parent_id"),
+                label=validated_data.get("label"),
+                description=validated_data.get("description"),
             )
             return Entity.create(entity_data)
-
 
     def delete_collection(self):
         """Deletes the entire collection."""
@@ -55,9 +58,9 @@ class EntityService:
         """Downloads the media or preview content for an entity."""
         # Business logic for handling file downloads would go here
         print(f"Service: Downloading {content_type} for entity ID: {entity_id}")
-        if content_type == 'media':
+        if content_type == "media":
             return {"message": "Media download not implemented"}
-        elif content_type == 'preview':
+        elif content_type == "preview":
             return {"message": "Preview download not implemented"}
 
     def update_entity(self, entity_id, data):
@@ -84,7 +87,10 @@ class EntityService:
             return {"message": f"Streaming m3u8 for entity {entity_id} not implemented"}
         else:
             print(f"Service: Getting segment {filename} for entity {entity_id}")
-            return {"message": f"Streaming segment {filename} for entity {entity_id} not implemented"}
+            return {
+                "message": f"Streaming segment {filename} for entity {entity_id} not implemented"
+            }
+
 
 # Instantiate the service
 entity_service = EntityService()
