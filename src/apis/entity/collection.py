@@ -1,7 +1,7 @@
 from flask.views import MethodView
 from flask import request
 from . import entity_bp
-from ..schemas import Item
+from ..schemas import Item, EntityCreateSchema
 from ...services.entity_service import entity_service
 
 @entity_bp.route("/")
@@ -15,10 +15,11 @@ class EntityCollection(MethodView):
         search_query = request.args.get('q')
         return entity_service.get_entities(filter_param, search_query)
 
+    @entity_bp.arguments(EntityCreateSchema, location="form")
     @entity_bp.response(201, Item)
-    def post(self):
+    def post(self, new_entity_data):
         """Created"""
-        return entity_service.create_entity(request.form)
+        return entity_service.create_entity(new_entity_data)
 
     def delete(self):
         """Deletes the entire collection."""

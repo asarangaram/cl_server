@@ -1,38 +1,33 @@
+from ..store.entity import Entity
+from flask_smorest import abort
+
 class EntityService:
     def get_entities(self, filter_param=None, search_query=None):
-        """
-        Retrieves a paginated list of media entities.
-        Supports filtering via query parameters.
-        """
-        if filter_param == 'loopback':
-            # Logic for loopback filter
-            print("Service: Getting entities with loopback filter")
-            return {"message": "Loopback filter not implemented"}
-        if search_query:
-            # Logic for search
-            print(f"Service: Searching for '{search_query}'")
-            return {"message": f"Search for '{search_query}' not implemented"}
-        
-        print("Service: Getting all entities")
-        return {"message": "Not implemented"}
+        """Retrieves a paginated list of media entities."""
+        return Entity.get_all(filter_param=filter_param, search_query=search_query)
 
     def create_entity(self, data):
         """Creates a new entity."""
-        print(f"Service: Creating entity with data: {data}")
-        return {"message": "Not implemented"}
+        return Entity.create(data.dict())
 
     def delete_collection(self):
         """Deletes the entire collection."""
-        print("Service: Deleting all entities")
-        return {"message": "Collection reset not implemented"}
+        # This is a destructive operation, so we'll add a safeguard here
+        # In a real app, you'd want more robust checks (e.g., permissions)
+        num_deleted = Entity.query.delete()
+        Entity.db.session.commit()
+        return {"message": f"Successfully deleted {num_deleted} entities."}
 
     def get_entity_by_id(self, entity_id):
         """Retrieves a specific media entity by its ID."""
-        print(f"Service: Getting entity with ID: {entity_id}")
-        return {"message": "Not implemented"}
+        entity = Entity.get(entity_id)
+        if not entity:
+            abort(404, message=f"Entity with ID {entity_id} not found.")
+        return entity
 
     def download_content(self, entity_id, content_type):
         """Downloads the media or preview content for an entity."""
+        # Business logic for handling file downloads would go here
         print(f"Service: Downloading {content_type} for entity ID: {entity_id}")
         if content_type == 'media':
             return {"message": "Media download not implemented"}
@@ -41,31 +36,29 @@ class EntityService:
 
     def update_entity(self, entity_id, data):
         """Updates a specific media entity by its ID."""
-        print(f"Service: Updating entity {entity_id} with data: {data}")
-        return {"message": "Not implemented"}
+        db_entity = self.get_entity_by_id(entity_id)
+        return db_entity.update(data.dict())
 
     def partial_update_entity(self, entity_id, data):
         """Partially updates a specific media entity."""
-        print(f"Service: Partially updating entity {entity_id} with data: {data}")
-        is_deleted = data.get('is_deleted')
-        if is_deleted is not None:
-            return {"message": f"Entity {entity_id} is_deleted status set to {is_deleted}"}
-        return {"message": "No update performed"}
+        db_entity = self.get_entity_by_id(entity_id)
+        update_data = data.dict(exclude_unset=True)
+        return db_entity.update(update_data)
 
     def delete_entity(self, entity_id):
         """Deletes a specific media entity by its ID."""
-        print(f"Service: Deleting entity with ID: {entity_id}")
-        return {"message": "Not implemented"}
+        db_entity = self.get_entity_by_id(entity_id)
+        return db_entity.delete()
 
     def get_stream(self, entity_id, filename=None):
         """Retrieves the m3u8 manifest or a specific streaming segment."""
+        # Business logic for streaming would go here
         if filename is None:
             print(f"Service: Getting m3u8 for entity {entity_id}")
             return {"message": f"Streaming m3u8 for entity {entity_id} not implemented"}
         else:
             print(f"Service: Getting segment {filename} for entity {entity_id}")
             return {"message": f"Streaming segment {filename} for entity {entity_id} not implemented"}
-
 
 # Instantiate the service
 entity_service = EntityService()

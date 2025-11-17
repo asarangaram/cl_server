@@ -66,3 +66,20 @@ class BGTask(BaseModel):
     task_name: Optional[str] = None
     task_id: Optional[str] = None
     task_status: Optional[str] = None
+
+
+class EntityCreateSchema(BaseModel):
+    label: Optional[str] = None
+    description: Optional[str] = None
+    parent_id: Optional[int] = None
+
+
+class EntityUpdateSchema(EntityCreateSchema):
+    pass
+
+
+class EntityPatchSchema(BaseModel):
+    label: Optional[str] = None
+    description: Optional[str] = None
+    parent_id: Optional[int] = None
+    is_deleted: Optional[bool] = None

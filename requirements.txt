@@ -2,3 +2,7 @@ flask
 flask-smorest
 pydantic
 werkzeug
+sqlalchemy
+alembic
+sqlalchemy-continuum
+flask-sqlalchemy
