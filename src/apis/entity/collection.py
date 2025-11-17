@@ -2,6 +2,7 @@ from flask.views import MethodView
 from flask import request
 from . import entity_bp
 from ..schemas import Item
+from ...services.entity_service import entity_service
 
 @entity_bp.route("/")
 class EntityCollection(MethodView):
@@ -12,23 +13,14 @@ class EntityCollection(MethodView):
         """
         filter_param = request.args.get('filter')
         search_query = request.args.get('q')
-
-        if filter_param == 'loopback':
-            # Logic for loopback filter
-            return {"message": "Loopback filter not implemented"}
-        if search_query:
-            # Logic for search
-            return {"message": f"Search for '{search_query}' not implemented"}
-            
-        # Default behavior: return paginated list
-        return {"message": "Not implemented"}
+        return entity_service.get_entities(filter_param, search_query)
 
     @entity_bp.response(201, Item)
     def post(self):
         """Created"""
-        return {"message": "Not implemented"}
+        return entity_service.create_entity(request.form)
 
     def delete(self):
         """Deletes the entire collection."""
-        return {"message": "Collection reset not implemented"}
+        return entity_service.delete_collection()
 
