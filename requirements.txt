@@ -1,9 +1,0 @@
-flask
-flask-smorest
-pydantic
-werkzeug
-sqlalchemy
-alembic
-sqlalchemy-continuum
-flask-sqlalchemy
-clmediakit @ git+https://github.com/asarangaram/clmediakit.git@44eae6f34fba6db2584e75953ca71633a348ea0a
