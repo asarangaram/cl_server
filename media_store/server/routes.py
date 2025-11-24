@@ -17,7 +17,14 @@ from fastapi import (
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from schemas import BodyCreateEntity, BodyPatchEntity, BodyUpdateEntity, Item
+from schemas import (
+    BodyCreateEntity,
+    BodyPatchEntity,
+    BodyUpdateEntity,
+    Item,
+    PaginatedResponse,
+    PaginationMetadata,
+)
 
 from .database import get_db
 from .services.entity_service import DuplicateFileError
@@ -30,11 +37,16 @@ router = APIRouter()
     "/entity/",
     tags=["entity"],
     summary="Get Entities",
-    description="Retrieves a paginated list of media entities.",
+    description="Retrieves a paginated list of media entities, optionally at a specific version.",
     operation_id="get_entities_entity__get",
-    responses={200: {"model": List[Item], "description": "Successful Response"}},
+    responses={200: {"model": PaginatedResponse, "description": "Successful Response"}},
 )
 async def get_entities(
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page (max 100)"),
+    version: Optional[int] = Query(
+        None, description="Optional version number to retrieve for all entities"
+    ),
     filter_param: Optional[str] = Query(
         None, title="Filter Param", description="Optional filter string"
     ),
@@ -42,9 +54,32 @@ async def get_entities(
         None, title="Search Query", description="Optional search query"
     ),
     db: Session = Depends(get_db),
-) -> List[Item]:
+) -> PaginatedResponse:
     service = EntityService(db)
-    return service.get_entities(filter_param, search_query)
+    items, total_count = service.get_entities(
+        page=page,
+        page_size=page_size,
+        version=version,
+        filter_param=filter_param,
+        search_query=search_query
+    )
+    
+    # Calculate pagination metadata
+    import math
+    total_pages = math.ceil(total_count / page_size) if total_count > 0 else 0
+    has_next = page < total_pages
+    has_prev = page > 1
+    
+    pagination = PaginationMetadata(
+        page=page,
+        page_size=page_size,
+        total_items=total_count,
+        total_pages=total_pages,
+        has_next=has_next,
+        has_prev=has_prev,
+    )
+    
+    return PaginatedResponse(items=items, pagination=pagination)
 
 
 @router.post(

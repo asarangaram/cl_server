@@ -139,4 +139,5 @@ def sample_images(test_images_dir):
     images = get_all_test_images()
     if len(images) < 2:
         pytest.skip(f"Not enough test images found. Please add at least 2 images to {test_images_dir} or update test_files.txt")
-    return images[:3]  # Return up to 3 images
+    return images[:30]  # Return up to 30 images for pagination testing
+

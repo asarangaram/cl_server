@@ -53,11 +53,14 @@ class TestEntityCRUD:
                     data={"is_collection": "false", "label": f"Entity {image_path.name}"}
                 )
         
-        # Get all entities
-        response = client.get("/entity/")
+        # Get all entities (request large page size to ensure we get all)
+        response = client.get("/entity/?page_size=100")
         assert response.status_code == 200
-        entities = response.json()
-        assert len(entities) == len(sample_images)
+        data = response.json()
+        assert "items" in data
+        assert "pagination" in data
+        assert len(data["items"]) == len(sample_images)
+        assert data["pagination"]["total_items"] == len(sample_images)
     
     def test_patch_entity(self, client):
         """Test partially updating an entity."""
@@ -123,8 +126,9 @@ class TestEntityCRUD:
         # Verify all deleted
         get_response = client.get("/entity/")
         assert get_response.status_code == 200
-        entities = get_response.json()
-        assert len(entities) == 0
+        data = get_response.json()
+        assert len(data["items"]) == 0
+        assert data["pagination"]["total_items"] == 0
     
     def test_get_nonexistent_entity(self, client):
         """Test getting an entity that doesn't exist."""

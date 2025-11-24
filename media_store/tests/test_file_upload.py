@@ -68,10 +68,10 @@ class TestFileUpload:
         assert len(media_files) == len(sample_images)
         
         # Verify we can retrieve all entities
-        response = client.get("/entity/")
+        response = client.get("/entity/?page_size=100")
         assert response.status_code == 200
-        entities = response.json()
-        assert len(entities) == len(sample_images)
+        data = response.json()
+        assert len(data["items"]) == len(sample_images)
     
     def test_upload_without_file(self, client):
         """Test creating a collection without a file."""

@@ -46,3 +46,20 @@ class Item(BaseModel):
     type: Optional[str] = Field(None, title="Type", read_only=True)
     extension: Optional[str] = Field(None, title="Extension", read_only=True)
     md5: Optional[str] = Field(None, title="Md5", read_only=True)
+
+
+class PaginationMetadata(BaseModel):
+    """Pagination metadata for paginated responses."""
+    page: int = Field(..., description="Current page number (1-indexed)")
+    page_size: int = Field(..., description="Number of items per page")
+    total_items: int = Field(..., description="Total number of items across all pages")
+    total_pages: int = Field(..., description="Total number of pages")
+    has_next: bool = Field(..., description="Whether there is a next page")
+    has_prev: bool = Field(..., description="Whether there is a previous page")
+
+
+class PaginatedResponse(BaseModel):
+    """Paginated response wrapper for entity lists."""
+    items: list[Item] = Field(..., description="List of items for the current page")
+    pagination: PaginationMetadata = Field(..., description="Pagination metadata")
+

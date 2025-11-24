@@ -114,27 +114,51 @@ class EntityService:
         )
     
     def get_entities(
-        self, 
+        self,
+        page: int = 1,
+        page_size: int = 20,
+        version: Optional[int] = None,
         filter_param: Optional[str] = None, 
         search_query: Optional[str] = None
-    ) -> List[Item]:
+    ) -> Tuple[List[Item], int]:
         """
-        Retrieve all entities with optional filtering.
+        Retrieve all entities with optional pagination and versioning.
         
         Args:
+            page: Page number (1-indexed)
+            page_size: Number of items per page
+            version: Optional version number to retrieve for all entities
             filter_param: Optional filter string (not implemented yet)
             search_query: Optional search query (not implemented yet)
             
         Returns:
-            List of Item instances
+            Tuple of (items, total_count)
         """
         query = self.db.query(Entity)
         
         # TODO: Implement filtering and search logic
         # For now, return all entities
         
+        # Get total count before pagination
+        total_count = query.count()
+        
+        # Apply pagination
+        offset = (page - 1) * page_size
+        query = query.offset(offset).limit(page_size)
+        
         entities = query.all()
-        return [self._entity_to_item(entity) for entity in entities]
+        
+        # If version is specified, get that version of each entity
+        if version is not None:
+            items = []
+            for entity in entities:
+                versioned_item = self.get_entity_version(entity.id, version)
+                if versioned_item:  # Only include if version exists
+                    items.append(versioned_item)
+        else:
+            items = [self._entity_to_item(entity) for entity in entities]
+        
+        return items, total_count
     
     def get_entity_by_id(self, entity_id: int, version: Optional[int] = None) -> Optional[Item]:
         """
