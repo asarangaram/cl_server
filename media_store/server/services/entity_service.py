@@ -33,11 +33,11 @@ class EntityService:
         """
         self.db = db
         self.file_storage = FileStorageService(base_dir=base_dir)
-    
+       
     @staticmethod
-    def _now_iso() -> str:
-        """Return current UTC time in ISO-8601 format."""
-        return datetime.utcnow().isoformat() + "Z"
+    def _now_timestamp() -> int:
+        """Return current UTC timestamp in milliseconds."""
+        return int(datetime.utcnow().timestamp() * 1000)
     
     def _extract_metadata(self, file_bytes: bytes, filename: str = "file") -> Dict:
         """
@@ -59,6 +59,17 @@ class EntityService:
             # Extract metadata using CLMetaData
             cl_metadata = CLMetaData.from_media(tmp_path)
             metadata = cl_metadata.to_dict()
+            
+            # Convert CreateDate to timestamp (ms) if present
+            if "CreateDate" in metadata and metadata["CreateDate"]:
+                try:
+                    # Attempt to parse EXIF date format: YYYY:MM:DD HH:MM:SS
+                    dt = datetime.strptime(str(metadata["CreateDate"]), "%Y:%m:%d %H:%M:%S")
+                    metadata["CreateDate"] = int(dt.timestamp() * 1000)
+                except ValueError:
+                    # Fallback or ignore if format is different
+                    pass
+                    
             return metadata
         finally:
             # Clean up temporary file
@@ -256,7 +267,7 @@ class EntityService:
         Raises:
             DuplicateFileError: If file with same MD5 already exists
         """
-        now = self._now_iso()
+        now = self._now_timestamp()
         file_meta = {}
         file_path = None
 
@@ -390,7 +401,7 @@ class EntityService:
             entity.file_path = file_path
                 
         # Update entity with new metadata and client-provided fields
-        now = self._now_iso()
+        now = self._now_timestamp()
         
         entity.label = body.label
         entity.description = body.description
@@ -429,7 +440,7 @@ class EntityService:
         for field, value in body.dict(exclude_unset=True).items():
             setattr(entity, field, value)
         
-        entity.updated_date = self._now_iso()
+        entity.updated_date = self._now_timestamp()
         
         self.db.commit()
         self.db.refresh(entity)

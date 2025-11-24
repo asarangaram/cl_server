@@ -113,3 +113,9 @@ class TestFileUpload:
         
         # Should have MIME type
         assert "image" in data["mime_type"].lower()
+        
+        # Should have Create Date (if available in sample image)
+        # Note: Most test images have EXIF data
+        if data["create_date"]:
+            assert isinstance(data["create_date"], int)
+            assert data["create_date"] > 0

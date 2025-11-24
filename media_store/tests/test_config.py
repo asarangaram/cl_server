@@ -55,24 +55,13 @@ def get_all_test_images() -> List[Path]:
     """
     Get all available test images.
     
-    First tries to load from test_files.txt, then falls back to
-    scanning the images directory for .jpg files.
+    Loads test file paths from test_files.txt.
     
     Returns:
         List of absolute Path objects for test images
     """
-    # Try loading from test_files.txt first
-    test_files = load_test_files()
-    if test_files:
-        return test_files
-    
-    # Fall back to scanning images directory
-    if not IMAGES_DIR.exists():
-        return []
-    
-    # Recursively find all .jpg and .jpeg files
-    jpg_files = list(IMAGES_DIR.rglob("*.jpg")) + list(IMAGES_DIR.rglob("*.jpeg"))
-    return [f.absolute() for f in jpg_files]
+    # Strictly load from test_files.txt
+    return load_test_files()
 
 
 # Pre-load test images for convenience

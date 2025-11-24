@@ -72,7 +72,7 @@ class TestTimestampFields:
         assert data["added_date"] is not None
         try:
             # Should be parseable as ISO-8601
-            parsed = datetime.fromisoformat(data["added_date"].replace("Z", "+00:00"))
+            parsed = datetime.fromtimestamp(int(data["added_date"]) / 1000.0)
             assert parsed is not None
         except ValueError:
             pytest.fail(f"added_date is not valid ISO-8601: {data['added_date']}")
@@ -103,7 +103,7 @@ class TestTimestampFields:
         # Verify updated_date exists and is valid ISO-8601
         assert data["updated_date"] is not None
         try:
-            parsed = datetime.fromisoformat(data["updated_date"].replace("Z", "+00:00"))
+            parsed = datetime.fromtimestamp(int(data["updated_date"]) / 1000.0)
             assert parsed is not None
         except ValueError:
             pytest.fail(f"updated_date is not valid ISO-8601: {data['updated_date']}")
@@ -155,7 +155,7 @@ class TestTimestampFields:
         # If present, should be a valid timestamp
         if data["create_date"] is not None:
             try:
-                parsed = datetime.fromisoformat(data["create_date"].replace("Z", "+00:00"))
+                parsed = datetime.fromtimestamp(int(data["create_date"]) / 1000.0)
                 assert parsed is not None
             except ValueError:
                 pytest.fail(f"create_date is not valid ISO-8601: {data['create_date']}")

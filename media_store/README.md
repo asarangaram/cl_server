@@ -100,14 +100,18 @@ Updates an entity. Can replace the file or update metadata.
 #### Patch Entity
 `PATCH /entity/{id}`
 
-Partially updates an entity. This endpoint is also used to **restore** a soft-deleted entity.
+Partially updates an entity. This endpoint is versatile and can be used to:
+- **Update Metadata**: Change `label` or `description`.
+- **Modify Hierarchy**: Change `parent_id` to move an entity to a different collection (or set to `null` to remove from collection).
+- **Soft Delete/Restore**: Set `is_deleted` to `true` (soft delete) or `false` (restore).
 
 **Body (JSON):**
 ```json
 {
   "body": {
     "label": "New Label",
-    "is_deleted": false  // Set to false to restore a deleted entity
+    "parent_id": 123,   // Move to collection 123
+    "is_deleted": false // Restore if deleted
   }
 }
 ```
@@ -115,7 +119,8 @@ Partially updates an entity. This endpoint is also used to **restore** a soft-de
 #### Delete Entity
 `DELETE /entity/{id}`
 
-Soft deletes an entity by setting the `is_deleted` flag to `true`. The entity remains in the database and can be restored using the PATCH endpoint.
+**WARNING: This is a non-recoverable action.**
+Permanently deletes the entity record from the database and removes the associated file from the storage. For reversible deletion, use the PATCH endpoint with `is_deleted=true`.
 
 ### Versioning
 
@@ -123,6 +128,32 @@ Soft deletes an entity by setting the `is_deleted` flag to `true`. The entity re
 `GET /entity/{id}/versions`
 
 Retrieves a list of all historical versions for an entity.
+
+### Response Structure
+All entity endpoints return an **Item** object:
+
+```json
+{
+  "id": 1,
+  "is_collection": false,
+  "label": "My Image",
+  "description": "A test image",
+  "parent_id": null,
+  "added_date": "2023-10-27T10:00:00Z",
+  "updated_date": "2023-10-27T10:00:00Z",
+  "create_date": "2023-01-01T12:00:00Z", // From EXIF if available
+  "file_size": 102400,
+  "height": 1080,
+  "width": 1920,
+  "duration": null,
+  "mime_type": "image/jpeg",
+  "type": "image",
+  "extension": "jpg",
+  "md5": "d41d8cd98f00b204e9800998ecf8427e",
+  "file_path": "2023/10/27/d41d8cd98f00b204e9800998ecf8427e.jpg",
+  "is_deleted": false
+}
+```
 
 ## Key Features
 

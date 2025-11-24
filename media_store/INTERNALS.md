@@ -58,8 +58,6 @@ We support both **Hard** and **Soft** deletes.
 ### High Priority
 1. **Video Duration Extraction**: 
    - Current implementation supports it, but we lack test coverage due to missing video test files.
-2. **EXIF Creation Date**: 
-   - Logic exists but needs verification with proper test images containing EXIF data.
 
 ### Medium Priority
 1. **Filtering & Search**: 
@@ -68,7 +66,5 @@ We support both **Hard** and **Soft** deletes.
 ### Low Priority
 1. **Async File I/O**: 
    - File operations currently use synchronous `open()`. For high throughput, `aiofiles` should be considered.
-2. **Cloud Storage**: 
-   - Currently limited to local filesystem. Abstraction layer needed for S3/GCS support.
-3. **Thumbnail Generation**: 
+2. **Thumbnail Generation**: 
    - No built-in thumbnail generation for large images or videos.

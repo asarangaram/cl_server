@@ -85,6 +85,39 @@ class TestEntityCRUD:
         data = patch_response.json()
         assert data["label"] == "Updated Label"
         assert data["description"] == "Original Description"  # Should remain unchanged
+        assert isinstance(data["updated_date"], int)
+
+    def test_patch_hierarchy(self, client):
+        """Test modifying entity hierarchy (parent_id)."""
+        # Create parent collection
+        parent_resp = client.post(
+            "/entity/",
+            data={"is_collection": "true", "label": "Parent Collection"}
+        )
+        parent_id = parent_resp.json()["id"]
+        
+        # Create child entity
+        child_resp = client.post(
+            "/entity/",
+            data={"is_collection": "true", "label": "Child Entity"}
+        )
+        child_id = child_resp.json()["id"]
+        
+        # 1. Move child to parent
+        resp = client.patch(
+            f"/entity/{child_id}",
+            json={"body": {"parent_id": parent_id}}
+        )
+        assert resp.status_code == 200
+        assert resp.json()["parent_id"] == parent_id
+        
+        # 2. Remove child from parent (nullify parent_id)
+        resp = client.patch(
+            f"/entity/{child_id}",
+            json={"body": {"parent_id": None}}
+        )
+        assert resp.status_code == 200
+        assert resp.json()["parent_id"] is None
     
     def test_delete_entity(self, client, sample_image, clean_media_dir):
         """Test hard deleting an entity."""

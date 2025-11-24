@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, Float, Integer, String
+from sqlalchemy import BigInteger, Boolean, Float, Integer, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -28,9 +28,9 @@ class Entity(Base):
     parent_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     
     # Timestamps
-    added_date: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    updated_date: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    create_date: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    added_date: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    updated_date: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
+    create_date: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     
     # File metadata
     file_size: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)

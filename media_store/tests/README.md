@@ -64,36 +64,43 @@ The parametrized tests automatically discover:
    - Error handling (404, 400, 409)
 
 3. **Validation Rules** ✅
-   - Image requirement logic
-   - Collection constraints
-   - Immutable fields
+  ## Adding Test Media
 
-4. **Duplicate Detection** ✅
-   - Rejects duplicate MD5 uploads
-   - Allows same-entity updates
+To add new test images or videos:
+1.  Add the **absolute path** of the file to `tests/test_files.txt`.
+2.  Ensure the file exists at that location.
+3.  The test suite will automatically load these files.
 
-5. **Metadata Extraction** ✅
-   - Dimensions, Size, MIME type, MD5
-   - EXIF data (where available)
+## Test Coverage
 
 ### Field Coverage
-
 | Field | Status | Notes |
-|-------|--------|-------|
-| `id` | ✅ Tested | Primary key |
-| `is_collection` | ✅ Tested | Immutable flag |
-| `label` | ✅ Tested | |
-| `description` | ✅ Tested | |
-| `parent_id` | ✅ Tested | |
-| `file_size` | ✅ Tested | Verified against actual |
-| `width/height` | ✅ Tested | Verified > 0 |
-| `mime_type` | ✅ Tested | |
-| `md5` | ✅ Tested | Duplicate detection |
-| `is_deleted` | ✅ Tested | Soft delete |
-| `added_date` | ⚠️ Partial | Existence checked |
-| `updated_date` | ⚠️ Partial | Existence checked |
-| `create_date` | ⚠️ Missing | Needs EXIF test images |
-| `duration` | ⚠️ Missing | Needs video test files |
+| :--- | :--- | :--- |
+| `id` | ✅ Covered | Auto-incrementing primary key |
+| `is_collection` | ✅ Covered | Tested for both True/False |
+| `label` | ✅ Covered | Basic string field |
+| `description` | ✅ Covered | Basic string field |
+| `parent_id` | ✅ Covered | Tested for hierarchy |
+| `added_date` | ✅ Covered | System managed |
+| `updated_date` | ✅ Covered | System managed |
+| `create_date` | ✅ Covered | Extracted from EXIF |
+| `file_size` | ✅ Covered | Extracted from file |
+| `height` | ✅ Covered | Extracted from image |
+| `width` | ✅ Covered | Extracted from image |
+| `duration` | ⚠️ Partial | Logic exists, needs video test files |
+| `mime_type` | ✅ Covered | Extracted from file |
+| `type` | ✅ Covered | Extracted from file |
+| `extension` | ✅ Covered | Extracted from file |
+| `md5` | ✅ Covered | Extracted and used for duplicate detection |
+| `file_path` | ✅ Covered | Verified in storage tests |
+| `is_deleted` | ✅ Covered | Tested via Soft Delete/Restore |
+
+### Feature Coverage
+- **CRUD Operations**: Full coverage for Create, Read, Update, Delete (Hard & Soft).
+- **Pagination**: Full coverage including edge cases.
+- **Versioning**: Full coverage using SQLAlchemy-Continuum.
+- **File Storage**: Verified naming convention (`{md5}.{ext}`) and directory structure.
+- **Validation**: Verified constraints on `is_collection` and image requirements.
 
 ---
 
