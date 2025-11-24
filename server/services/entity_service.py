@@ -23,15 +23,16 @@ class DuplicateFileError(Exception):
 class EntityService:
     """Service layer for entity operations."""
     
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, base_dir: Optional[str] = None):
         """
         Initialize the entity service.
         
         Args:
             db: SQLAlchemy database session
+            base_dir: Optional base directory for file storage (for testing)
         """
         self.db = db
-        self.file_storage = FileStorageService()
+        self.file_storage = FileStorageService(base_dir=base_dir)
     
     @staticmethod
     def _now_iso() -> str:

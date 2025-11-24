@@ -4,3 +4,5 @@ python-multipart>=0.0.6
 sqlalchemy>=2.0.0
 alembic>=1.12.0
 clmediakit @ git+ssh://git@github.com/asarangaram/clmediakit.git
+pytest>=7.4.0
+httpx>=0.24.0

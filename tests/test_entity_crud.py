@@ -1,0 +1,142 @@
+"""
+Tests for CRUD operations on entities.
+"""
+
+
+class TestEntityCRUD:
+    """Test Create, Read, Update, Delete operations."""
+    
+    def test_create_collection(self, client):
+        """Test creating a collection without files."""
+        response = client.post(
+            "/entity/",
+            data={
+                "is_collection": "true",
+                "label": "Test Collection",
+                "description": "A test collection"
+            }
+        )
+        
+        assert response.status_code == 201
+        data = response.json()
+        assert data["id"] is not None
+        assert data["is_collection"] is True
+        assert data["label"] == "Test Collection"
+    
+    def test_get_entity_by_id(self, client, sample_image, clean_media_dir):
+        """Test retrieving a specific entity by ID."""
+        # Create entity
+        with open(sample_image, "rb") as f:
+            create_response = client.post(
+                "/entity/",
+                files={"image": (sample_image.name, f, "image/jpeg")},
+                data={"is_collection": "false", "label": "Test Entity"}
+            )
+        
+        entity_id = create_response.json()["id"]
+        
+        # Get entity
+        get_response = client.get(f"/entity/{entity_id}")
+        assert get_response.status_code == 200
+        data = get_response.json()
+        assert data["id"] == entity_id
+        assert data["label"] == "Test Entity"
+    
+    def test_get_all_entities(self, client, sample_images, clean_media_dir):
+        """Test retrieving all entities."""
+        # Create multiple entities
+        for image_path in sample_images:
+            with open(image_path, "rb") as f:
+                client.post(
+                    "/entity/",
+                    files={"image": (image_path.name, f, "image/jpeg")},
+                    data={"is_collection": "false", "label": f"Entity {image_path.name}"}
+                )
+        
+        # Get all entities
+        response = client.get("/entity/")
+        assert response.status_code == 200
+        entities = response.json()
+        assert len(entities) == len(sample_images)
+    
+    def test_patch_entity(self, client):
+        """Test partially updating an entity."""
+        # Create entity
+        create_response = client.post(
+            "/entity/",
+            data={
+                "is_collection": "true",
+                "label": "Original Label",
+                "description": "Original Description"
+            }
+        )
+        entity_id = create_response.json()["id"]
+        
+        # Patch entity (update only label)
+        patch_response = client.patch(
+            f"/entity/{entity_id}",
+            json={"body": {"label": "Updated Label"}}
+        )
+        
+        assert patch_response.status_code == 200
+        data = patch_response.json()
+        assert data["label"] == "Updated Label"
+        assert data["description"] == "Original Description"  # Should remain unchanged
+    
+    def test_delete_entity(self, client, sample_image, clean_media_dir):
+        """Test soft deleting an entity."""
+        # Create entity
+        with open(sample_image, "rb") as f:
+            create_response = client.post(
+                "/entity/",
+                files={"image": (sample_image.name, f, "image/jpeg")},
+                data={"is_collection": "false", "label": "To Delete"}
+            )
+        
+        entity_id = create_response.json()["id"]
+        
+        # Delete entity
+        delete_response = client.delete(f"/entity/{entity_id}")
+        assert delete_response.status_code == 200
+        
+        # Verify entity is marked as deleted
+        get_response = client.get(f"/entity/{entity_id}")
+        assert get_response.status_code == 200
+        data = get_response.json()
+        assert data["is_deleted"] is True
+    
+    def test_delete_all_entities(self, client, sample_images, clean_media_dir):
+        """Test deleting all entities."""
+        # Create multiple entities
+        for image_path in sample_images:
+            with open(image_path, "rb") as f:
+                client.post(
+                    "/entity/",
+                    files={"image": (image_path.name, f, "image/jpeg")},
+                    data={"is_collection": "false", "label": f"Entity {image_path.name}"}
+                )
+        
+        # Delete all
+        delete_response = client.delete("/entity/")
+        assert delete_response.status_code == 200
+        
+        # Verify all deleted
+        get_response = client.get("/entity/")
+        assert get_response.status_code == 200
+        entities = get_response.json()
+        assert len(entities) == 0
+    
+    def test_get_nonexistent_entity(self, client):
+        """Test getting an entity that doesn't exist."""
+        response = client.get("/entity/99999")
+        assert response.status_code == 404
+    
+    def test_update_nonexistent_entity(self, client, sample_image):
+        """Test updating an entity that doesn't exist."""
+        with open(sample_image, "rb") as f:
+            response = client.put(
+                "/entity/99999",
+                files={"image": (sample_image.name, f, "image/jpeg")},
+                data={"is_collection": "false", "label": "Test"}
+            )
+        assert response.status_code == 404

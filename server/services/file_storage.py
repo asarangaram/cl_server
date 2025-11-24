@@ -6,19 +6,21 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from server.config import MEDIA_STORAGE_DIR
-
 
 class FileStorageService:
     """Service for managing file storage with organized directory structure."""
     
-    def __init__(self, base_dir: str = MEDIA_STORAGE_DIR):
+    def __init__(self, base_dir: Optional[str] = None):
         """
         Initialize file storage service.
         
         Args:
-            base_dir: Base directory for file storage
+            base_dir: Base directory for file storage. If None, uses MEDIA_STORAGE_DIR from config.
         """
+        if base_dir is None:
+            from server.config import MEDIA_STORAGE_DIR
+            base_dir = MEDIA_STORAGE_DIR
+        
         self.base_dir = Path(base_dir)
         self.base_dir.mkdir(parents=True, exist_ok=True)
     
