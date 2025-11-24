@@ -17,7 +17,7 @@ from fastapi import (
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
-from schemas import (
+from .schemas import (
     BodyCreateEntity,
     BodyPatchEntity,
     BodyUpdateEntity,
