@@ -84,8 +84,8 @@ pytest --cov=server --cov-report=html
 - `test_engine` - Fresh database engine per test
 - `test_db_session` - Database session for direct queries
 - `clean_media_dir` - Temporary media directory (auto-cleaned)
-- `sample_image` - Single test image from `./images`
-- `sample_images` - Multiple test images from `./images`
+- `sample_image` - Single test image from `../images`
+- `sample_images` - Multiple test images from `../images`
 
 ### Test Database
 - Uses in-memory SQLite for speed

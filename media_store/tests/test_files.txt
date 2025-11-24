@@ -1,8 +1,8 @@
 # Test files list
-# Format: relative/path/to/file.jpg
+# Format: relative/path/to/file.jpg (relative to media_store directory)
 # Comments start with #
 
-images/20210426_153946.jpg
-images/20210422_204834.jpg
-images/new Images/IMG20240901190030.jpg
-images/new Images/IMG_20240901_131642.jpg
+../images/20210426_153946.jpg
+../images/20210422_204834.jpg
+../images/new Images/IMG20240901190030.jpg
+../images/new Images/IMG_20240901_131642.jpg

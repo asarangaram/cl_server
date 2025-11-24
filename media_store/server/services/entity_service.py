@@ -136,20 +136,80 @@ class EntityService:
         entities = query.all()
         return [self._entity_to_item(entity) for entity in entities]
     
-    def get_entity_by_id(self, entity_id: int) -> Optional[Item]:
+    def get_entity_by_id(self, entity_id: int, version: Optional[int] = None) -> Optional[Item]:
         """
-        Retrieve a single entity by ID.
+        Retrieve a single entity by ID, optionally at a specific version.
+        
+        Args:
+            entity_id: Entity ID
+            version: Optional version number to retrieve (None = latest)
+            
+        Returns:
+            Item instance or None if not found
+        """
+        if version is not None:
+            return self.get_entity_version(entity_id, version)
+        
+        entity = self.db.query(Entity).filter(Entity.id == entity_id).first()
+        if entity:
+            return self._entity_to_item(entity)
+        return None
+    
+    def get_entity_version(self, entity_id: int, version: int) -> Optional[Item]:
+        """
+        Retrieve a specific version of an entity.
+        
+        Args:
+            entity_id: Entity ID
+            version: Version number to retrieve (1-indexed)
+            
+        Returns:
+            Item instance for the specified version or None if not found
+        """
+        # First check if the entity exists
+        entity = self.db.query(Entity).filter(Entity.id == entity_id).first()
+        if not entity:
+            return None
+        
+        # Get the specific version
+        # SQLAlchemy-Continuum creates a versions relationship on the model
+        if hasattr(entity, 'versions'):
+            versions_list = entity.versions.all()
+            # Versions are 1-indexed for the API
+            if 1 <= version <= len(versions_list):
+                version_entity = versions_list[version - 1]
+                return self._entity_to_item(version_entity)
+        
+        return None
+    
+    def get_entity_versions(self, entity_id: int) -> List[Dict]:
+        """
+        Get all versions of an entity with metadata.
         
         Args:
             entity_id: Entity ID
             
         Returns:
-            Item instance or None if not found
+            List of version metadata dictionaries
         """
         entity = self.db.query(Entity).filter(Entity.id == entity_id).first()
-        if entity:
-            return self._entity_to_item(entity)
-        return None
+        if not entity:
+            return []
+        
+        if not hasattr(entity, 'versions'):
+            return []
+        
+        versions_list = entity.versions.all()
+        result = []
+        for idx, version in enumerate(versions_list, start=1):
+            version_info = {
+                "version": idx,
+                "transaction_id": version.transaction_id if hasattr(version, 'transaction_id') else None,
+                "updated_date": version.updated_date if hasattr(version, 'updated_date') else None,
+            }
+            result.append(version_info)
+        
+        return result
     
     def create_entity(
         self, 
@@ -174,6 +234,14 @@ class EntityService:
         now = self._now_iso()
         file_meta = {}
         file_path = None
+
+        # Validation: image is required if is_collection is False
+        if not body.is_collection and not image:
+            raise ValueError("Image is required when is_collection is False")
+        
+        # Validation: image should not be present if is_collection is True
+        if body.is_collection and image:
+            raise ValueError("Image should not be provided when is_collection is True")
         
         # Extract metadata and save file if provided
         if image:
@@ -249,44 +317,61 @@ class EntityService:
         entity = self.db.query(Entity).filter(Entity.id == entity_id).first()
         if not entity:
             return None
+
+        # Validation: is_collection should not be changed
+        # The body.is_collection from the request should match the existing entity.is_collection
+        if body.is_collection != entity.is_collection:
+            raise ValueError(
+                f"Cannot change is_collection from {entity.is_collection} to {body.is_collection}. "
+                "is_collection is immutable after entity creation."
+            )
         
-        # Extract metadata from new file
-        file_meta = self._extract_metadata(image, filename)
+        # Validation: image should not be present if is_collection is True
+        if entity.is_collection and image:
+            raise ValueError("Image should not be provided when is_collection is True")
         
-        # Check for duplicate MD5 (excluding current entity)
-        if file_meta.get("md5"):
-            duplicate = self._check_duplicate_md5(file_meta["md5"], exclude_entity_id=entity_id)
-            if duplicate:
-                raise DuplicateFileError(
-                    f"File with MD5 {file_meta['md5']} already exists (entity ID: {duplicate.id})"
-                )
+        # Note: image is optional if is_collection is False (for PUT operations)
+        # This allows updating metadata without changing the file
         
-        # Delete old file if exists
-        old_file_path = entity.file_path
-        if old_file_path:
-            self.file_storage.delete_file(old_file_path)
-        
-        # Save new file
-        file_path = self.file_storage.save_file(image, file_meta, filename)
-        
+        if image:
+            # Extract metadata from new file
+            file_meta = self._extract_metadata(image, filename)
+            
+            # Check for duplicate MD5 (excluding current entity)
+            if file_meta.get("md5"):
+                duplicate = self._check_duplicate_md5(file_meta["md5"], exclude_entity_id=entity_id)
+                if duplicate:
+                    raise DuplicateFileError(
+                        f"File with MD5 {file_meta['md5']} already exists (entity ID: {duplicate.id})"
+                    )
+            
+            # Delete old file if exists
+            old_file_path = entity.file_path
+            if old_file_path:
+                self.file_storage.delete_file(old_file_path)
+            
+            # Save new file
+            file_path = self.file_storage.save_file(image, file_meta, filename)
+                   
+            # Update file metadata
+            entity.file_size = file_meta.get("FileSize")
+            entity.height = file_meta.get("ImageHeight")
+            entity.width = file_meta.get("ImageWidth")
+            entity.duration = file_meta.get("Duration")
+            entity.mime_type = file_meta.get("MIMEType")
+            entity.type = file_meta.get("type")
+            entity.extension = file_meta.get("extension")
+            entity.md5 = file_meta.get("md5")
+            entity.file_path = file_path
+                
         # Update entity with new metadata and client-provided fields
         now = self._now_iso()
-        entity.is_collection = body.is_collection
+        
         entity.label = body.label
         entity.description = body.description
         entity.parent_id = body.parent_id
         entity.updated_date = now
-        
-        # Update file metadata
-        entity.file_size = file_meta.get("FileSize")
-        entity.height = file_meta.get("ImageHeight")
-        entity.width = file_meta.get("ImageWidth")
-        entity.duration = file_meta.get("Duration")
-        entity.mime_type = file_meta.get("MIMEType")
-        entity.type = file_meta.get("type")
-        entity.extension = file_meta.get("extension")
-        entity.md5 = file_meta.get("md5")
-        entity.file_path = file_path
+
         
         try:
             self.db.commit()

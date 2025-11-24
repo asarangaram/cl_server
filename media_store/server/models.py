@@ -16,6 +16,7 @@ class Entity(Base):
     """SQLAlchemy model for media entities."""
     
     __tablename__ = "entities"
+    __versioned__ = {}  # Enable SQLAlchemy-Continuum versioning
     
     # Primary key
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

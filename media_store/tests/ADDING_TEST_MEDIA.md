@@ -53,7 +53,7 @@ To test video files with duration metadata:
    ```python
    def get_all_test_images():
        """Recursively find all image files in the images directory."""
-       images_dir = Path("./images")
+       images_dir = Path("../images")
        if not images_dir.exists():
            return []
        

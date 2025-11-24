@@ -6,6 +6,9 @@ from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
+# CRITICAL: Import versioning BEFORE models to ensure make_versioned() is called first
+from . import versioning  # noqa: F401
+
 from .config import DATABASE_URL
 from .models import Base
 
@@ -18,11 +21,6 @@ engine = create_engine(
 
 # Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-def init_db() -> None:
-    """Initialize the database by creating all tables."""
-    Base.metadata.create_all(bind=engine)
 
 
 def get_db() -> Generator[Session, None, None]:

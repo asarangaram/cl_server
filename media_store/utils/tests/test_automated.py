@@ -13,7 +13,7 @@ from pathlib import Path
 import requests
 
 BASE_URL = "http://127.0.0.1:8000"
-TEST_IMAGES_DIR = Path("./images")
+TEST_IMAGES_DIR = Path("../images")
 
 
 def print_section(title):

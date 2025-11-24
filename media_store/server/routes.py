@@ -83,6 +83,8 @@ async def create_entity(
     
     try:
         return service.create_entity(body, file_bytes, filename)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except DuplicateFileError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
@@ -105,20 +107,28 @@ async def delete_collection(db: Session = Depends(get_db)) -> JSONResponse:
     "/entity/{entity_id}",
     tags=["entity"],
     summary="Get Entity",
-    description="Retrieves a specific media entity by its ID.",
+    description="Retrieves a specific media entity by its ID, optionally at a specific version.",
     operation_id="get_entity_entity__entity_id__get",
     responses={200: {"model": Item, "description": "Successful Response"}},
 )
 async def get_entity(
     entity_id: int = Path(..., title="Entity Id"),
+    version: Optional[int] = Query(
+        None, title="Version", description="Optional version number to retrieve"
+    ),
     content: Optional[str] = Query(
         None, title="Content", description="Optional content query"
     ),
     db: Session = Depends(get_db),
 ) -> Item:
     service = EntityService(db)
-    item = service.get_entity_by_id(entity_id)
+    item = service.get_entity_by_id(entity_id, version=version)
     if not item:
+        if version is not None:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Entity {entity_id} version {version} not found"
+            )
         raise HTTPException(status_code=404, detail="Entity not found")
     return item
 
@@ -137,7 +147,7 @@ async def put_entity(
     label: Optional[str] = Form(None, title="Label"),
     description: Optional[str] = Form(None, title="Description"),
     parent_id: Optional[int] = Form(None, title="Parent Id"),
-    image: UploadFile = File(..., title="Image"),
+    image: Optional[UploadFile] = File(None, title="Image"),
     db: Session = Depends(get_db),
 ) -> Item:
     service = EntityService(db)
@@ -150,15 +160,20 @@ async def put_entity(
         parent_id=parent_id
     )
     
-    # Read file bytes and filename (mandatory for PUT)
-    file_bytes = await image.read()
-    filename = image.filename or "file"
+    # Read file bytes and filename if provided
+    file_bytes = None
+    filename = "file"
+    if image:
+        file_bytes = await image.read()
+        filename = image.filename or "file"
     
     try:
         item = service.update_entity(entity_id, body, file_bytes, filename)
         if not item:
             raise HTTPException(status_code=404, detail="Entity not found")
         return item
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except DuplicateFileError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
@@ -200,6 +215,26 @@ async def delete_entity(
     if not item:
         raise HTTPException(status_code=404, detail="Entity not found")
     return JSONResponse(content=None, status_code=status.HTTP_200_OK)
+
+
+@router.get(
+    "/entity/{entity_id}/versions",
+    tags=["entity"],
+    summary="Get Entity Versions",
+    description="Retrieves all versions of a specific entity.",
+    operation_id="get_entity_versions_entity__entity_id__versions_get",
+    responses={200: {"model": List[dict], "description": "Successful Response"}},
+)
+async def get_entity_versions(
+    entity_id: int = Path(..., title="Entity Id"),
+    db: Session = Depends(get_db),
+) -> List[dict]:
+    service = EntityService(db)
+    versions = service.get_entity_versions(entity_id)
+    if not versions:
+        raise HTTPException(status_code=404, detail="Entity not found or no versions available")
+    return versions
+
 
 
 @router.get(

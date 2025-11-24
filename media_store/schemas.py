@@ -18,6 +18,7 @@ class BodyUpdateEntity(BaseModel):
     description: Optional[str] = Field(None, title="Description")
     parent_id: Optional[int] = Field(None, title="Parent Id")
     is_collection: bool = Field(..., title="Is Collection")
+    # image is part of the multipart body – handled separately
 
 
 class BodyPatchEntity(BaseModel):

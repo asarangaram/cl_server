@@ -108,9 +108,9 @@ class TestPutEndpoint:
         assert "image" in data["mime_type"].lower()
         assert len(data["md5"]) == 32  # MD5 hash length
     
-    def test_put_without_file_fails(self, client, sample_image, clean_media_dir):
-        """Test that PUT without file is rejected (file is mandatory)."""
-        # Create entity
+    def test_put_without_file_succeeds_for_non_collection(self, client, sample_image, clean_media_dir):
+        """Test that PUT without file succeeds for non-collections (image is optional)."""
+        # Create entity with image
         with open(sample_image, "rb") as f:
             create_response = client.post(
                 "/entity/",
@@ -120,7 +120,7 @@ class TestPutEndpoint:
         
         entity_id = create_response.json()["id"]
         
-        # Try to update without file (should fail)
+        # Update without file (should succeed - image is optional for PUT on non-collections)
         update_response = client.put(
             f"/entity/{entity_id}",
             data={
@@ -129,8 +129,12 @@ class TestPutEndpoint:
             }
         )
         
-        # Should fail because file is mandatory for PUT
-        assert update_response.status_code == 422  # Validation error
+        # Should succeed because image is optional for PUT operations on non-collections
+        assert update_response.status_code == 200
+        data = update_response.json()
+        assert data["label"] == "Updated without file"
+        # File metadata should remain from original upload
+        assert data["md5"] is not None
     
     def test_put_updates_all_metadata_fields(self, client, sample_images, clean_media_dir):
         """Test that PUT updates all metadata fields correctly."""

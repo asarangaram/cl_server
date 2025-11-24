@@ -42,11 +42,11 @@ pytest --cov=server --cov-report=html
 - `client` - FastAPI TestClient with fresh database
 - `test_db` - In-memory SQLite database for testing
 - `clean_media_dir` - Temporary media directory (auto-cleaned)
-- `sample_image` - Single test image from ./images
-- `sample_images` - Multiple test images from ./images
+- `sample_image` - Single test image from ../images
+- `sample_images` - Multiple test images from ../images
 
 ## Requirements
 
-- Test images must be present in `./images` directory
+- Test images must be present in `../images` directory
 - ExifTool must be installed (`brew install exiftool`)
 - All dependencies from `requirements.txt`

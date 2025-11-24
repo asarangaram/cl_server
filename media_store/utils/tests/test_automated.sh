@@ -7,7 +7,7 @@
 set -e  # Exit on error
 
 BASE_URL="http://127.0.0.1:8000"
-IMAGES_DIR="./images"
+IMAGES_DIR="../images"
 TEST_RESULTS=()
 
 # Colors for output
