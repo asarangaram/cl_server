@@ -179,7 +179,8 @@ class TestFilePathField:
         # file_path is internal and not exposed in API response
         # But we can verify the file exists in storage
         md5 = data["md5"]
-        stored_files = list(clean_media_dir.rglob(f"{md5}_*"))
+        # Files are stored as {md5}{extension}, so match any file starting with the MD5
+        stored_files = list(clean_media_dir.rglob(f"{md5}*"))
         assert len(stored_files) == 1, "File should be stored with MD5 prefix"
         
         # Verify file path structure: YYYY/MM/DD/md5_filename
