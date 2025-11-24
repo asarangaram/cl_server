@@ -217,19 +217,22 @@ async def put_entity(
     "/entity/{entity_id}",
     tags=["entity"],
     summary="Patch Entity",
-    description="Patch an existing entity.",
+    description="Partially updates an entity. Use this endpoint to soft delete (is_deleted=true) or restore (is_deleted=false) an entity.",
     operation_id="patch_entity_entity__entity_id__patch",
-    responses={200: {"model": Item, "description": "Successful Response"}},
+    responses={
+        200: {"model": Item, "description": "Successful Response"},
+        404: {"description": "Entity not found"},
+    },
 )
 async def patch_entity(
-    entity_id: int = Path(..., title="Entity Id"),
-    body: BodyPatchEntity = Body(..., embed=True),
-    db: Session = Depends(get_db),
+    entity_id: int, 
+    body: BodyPatchEntity = Body(..., embed=True), 
+    db: Session = Depends(get_db)
 ) -> Item:
     service = EntityService(db)
     item = service.patch_entity(entity_id, body)
     if not item:
-        raise HTTPException(status_code=404, detail="Entity not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entity not found")
     return item
 
 
@@ -237,19 +240,19 @@ async def patch_entity(
     "/entity/{entity_id}",
     tags=["entity"],
     summary="Delete Entity",
-    description="Deletes a specific entity by ID.",
+    description="Permanently deletes an entity and its associated file (Hard Delete).",
     operation_id="delete_entity_entity__entity_id__delete",
-    responses={200: {"model": None, "description": "Successful Response"}},
+    responses={
+        200: {"model": Item, "description": "Successful Response"},
+        404: {"description": "Entity not found"},
+    },
 )
-async def delete_entity(
-    entity_id: int = Path(..., title="Entity Id"),
-    db: Session = Depends(get_db),
-) -> JSONResponse:
+async def delete_entity(entity_id: int, db: Session = Depends(get_db)) -> Item:
     service = EntityService(db)
     item = service.delete_entity(entity_id)
     if not item:
-        raise HTTPException(status_code=404, detail="Entity not found")
-    return JSONResponse(content=None, status_code=status.HTTP_200_OK)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entity not found")
+    return item
 
 
 @router.get(

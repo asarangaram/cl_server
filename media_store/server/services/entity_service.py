@@ -110,6 +110,7 @@ class EntityService:
             type=entity.type,
             extension=entity.extension,
             md5=entity.md5,
+            file_path=entity.file_path,
             is_deleted=entity.is_deleted,
         )
     
@@ -449,11 +450,12 @@ class EntityService:
         if not entity:
             return None
         
-        entity.is_deleted = True
-        entity.updated_date = self._now_iso()
-        
+        # Hard delete: remove file and database record
+        if entity.file_path:
+            self.file_storage.delete_file(entity.file_path)
+            
+        self.db.delete(entity)
         self.db.commit()
-        self.db.refresh(entity)
         
         return self._entity_to_item(entity)
     

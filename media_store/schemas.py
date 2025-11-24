@@ -46,6 +46,7 @@ class Item(BaseModel):
     type: Optional[str] = Field(None, title="Type", read_only=True)
     extension: Optional[str] = Field(None, title="Extension", read_only=True)
     md5: Optional[str] = Field(None, title="Md5", read_only=True)
+    file_path: Optional[str] = Field(None, title="File Path", read_only=True)
 
 
 class PaginationMetadata(BaseModel):

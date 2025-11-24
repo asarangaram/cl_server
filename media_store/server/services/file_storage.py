@@ -47,9 +47,15 @@ class FileStorageService:
         dir_path = self.base_dir / year / month / day
         dir_path.mkdir(parents=True, exist_ok=True)
         
-        # Generate filename with MD5 prefix
+        # Generate filename with MD5 and extension
         md5 = metadata.get("md5", "unknown")
-        filename = f"{md5}_{original_filename}"
+        # Extract extension from original filename if not in metadata
+        if "extension" in metadata and metadata["extension"]:
+            ext = f".{metadata['extension']}" if not metadata['extension'].startswith('.') else metadata['extension']
+        else:
+            ext = Path(original_filename).suffix
+            
+        filename = f"{md5}{ext}"
         
         return dir_path / filename
     

@@ -14,53 +14,69 @@ class TestFileStorage:
             response = client.post(
                 "/entity/",
                 files={"image": (sample_image.name, f, "image/jpeg")},
-                data={"is_collection": "false", "label": "Storage test"}
-            )
-        
-        assert response.status_code == 201
-        
-        # Find the stored file
-        stored_files = list(clean_media_dir.rglob("*.jpg"))
-        assert len(stored_files) == 1
-        
-        stored_file = stored_files[0]
-        rel_path = stored_file.relative_to(clean_media_dir)
-        parts = rel_path.parts
-        
-        # Should be YYYY/MM/DD/filename
-        assert len(parts) == 4
-        year, month, day, filename = parts
-        
-        # Verify format
-        assert year.isdigit() and len(year) == 4
-        assert month.isdigit() and 1 <= int(month) <= 12
-        assert day.isdigit() and 1 <= int(day) <= 31
-        
-        # Filename should have MD5 prefix
-        assert "_" in filename
-        md5_prefix = filename.split("_")[0]
-        assert len(md5_prefix) == 32  # MD5 hash length
-    
-    def test_md5_prefix_in_filename(self, client, sample_image, clean_media_dir):
-        """Test that filenames are prefixed with MD5 hash."""
-        with open(sample_image, "rb") as f:
-            response = client.post(
-                "/entity/",
-                files={"image": (sample_image.name, f, "image/jpeg")},
-                data={"is_collection": "false", "label": "MD5 test"}
+                data={"is_collection": "false", "label": "Storage Test"}
             )
         
         assert response.status_code == 201
         data = response.json()
-        md5_hash = data["md5"]
         
-        # Find the stored file
+        # Check file path in response (should be relative)
+        file_path = Path(data["file_path"])
+        
+        # Check structure: YYYY/MM/DD/{md5}.{ext}
+        # Parts: [YYYY, MM, DD, filename]
+        assert len(file_path.parts) >= 4
+        
+        # Verify filename format (MD5 + extension)
+        filename = file_path.name
+        md5 = data["md5"]
+        assert filename.startswith(md5)
+        assert filename.endswith(Path(sample_image.name).suffix)
+        # Should NOT contain original filename stem (unless it was part of extension which is unlikely)
+        assert sample_image.stem not in filename
+
+    def test_md5_naming_convention(self, file_storage_service):
+        """Test that files are named with {md5}.{ext} convention."""
+        file_bytes = b"test content"
+        metadata = {"md5": "abc1234567890def", "extension": "jpg"}
+        original_filename = "test_image.jpg"
+        
+        relative_path = file_storage_service.save_file(file_bytes, metadata, original_filename)
+        
+        # Should contain MD5
+        assert "abc1234567890def" in relative_path
+        # Should NOT contain original filename
+        assert "test_image" not in relative_path
+        # Should end with extension
+        assert relative_path.endswith(".jpg")
+        # Should be in YYYY/MM/DD structure
+        assert len(Path(relative_path).parts) >= 4
+    
+    def test_md5_prefix_in_filename(self, client, sample_image, clean_media_dir):
+        """Test that filenames use MD5 as name."""
+        with open(sample_image, "rb") as f:
+            response = client.post(
+                "/entity/",
+                files={"image": (sample_image.name, f, "image/jpeg")},
+                data={"is_collection": "false", "label": "MD5 Name Test"}
+            )
+        
+        data = response.json()
+        file_path = data["file_path"]
+        md5 = data["md5"]
+        
+        # Filename should be {md5}.{ext}
+        assert md5 in file_path
+        assert sample_image.name not in file_path  # Original name should NOT be present
+        assert file_path.endswith(sample_image.suffix)
+        
+        # Also verify on disk
         stored_files = list(clean_media_dir.rglob("*.jpg"))
         assert len(stored_files) == 1
         
         filename = stored_files[0].name
-        assert filename.startswith(md5_hash)
-        assert sample_image.name in filename
+        assert filename.startswith(md5)
+        assert not (sample_image.stem in filename and sample_image.stem != md5) # Ensure original stem is not part of filename unless it's the MD5 itself
     
     def test_multiple_files_organization(self, client, sample_images, clean_media_dir):
         """Test that multiple files are organized correctly."""

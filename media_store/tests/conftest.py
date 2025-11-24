@@ -141,3 +141,10 @@ def sample_images(test_images_dir):
         pytest.skip(f"Not enough test images found. Please add at least 2 images to {test_images_dir} or update test_files.txt")
     return images[:30]  # Return up to 30 images for pagination testing
 
+
+@pytest.fixture
+def file_storage_service(clean_media_dir):
+    """Create a FileStorageService instance using the clean media directory."""
+    from server.services.file_storage import FileStorageService
+    return FileStorageService(base_dir=str(clean_media_dir))
+

@@ -87,26 +87,60 @@ class TestEntityCRUD:
         assert data["description"] == "Original Description"  # Should remain unchanged
     
     def test_delete_entity(self, client, sample_image, clean_media_dir):
-        """Test soft deleting an entity."""
+        """Test hard deleting an entity."""
         # Create entity
         with open(sample_image, "rb") as f:
-            create_response = client.post(
+            response = client.post(
                 "/entity/",
                 files={"image": (sample_image.name, f, "image/jpeg")},
-                data={"is_collection": "false", "label": "To Delete"}
+                data={"is_collection": "false", "label": "Delete Test"}
             )
-        
-        entity_id = create_response.json()["id"]
+        entity_id = response.json()["id"]
         
         # Delete entity
-        delete_response = client.delete(f"/entity/{entity_id}")
-        assert delete_response.status_code == 200
+        response = client.delete(f"/entity/{entity_id}")
+        assert response.status_code == 200
         
-        # Verify entity is marked as deleted
-        get_response = client.get(f"/entity/{entity_id}")
-        assert get_response.status_code == 200
-        data = get_response.json()
-        assert data["is_deleted"] is True
+        # Verify entity is GONE (Hard Delete)
+        response = client.get(f"/entity/{entity_id}")
+        assert response.status_code == 404
+
+    def test_soft_delete_and_restore(self, client, sample_image, clean_media_dir):
+        """Test soft delete and restore via PATCH."""
+        # Create entity
+        with open(sample_image, "rb") as f:
+            response = client.post(
+                "/entity/",
+                files={"image": (sample_image.name, f, "image/jpeg")},
+                data={"is_collection": "false", "label": "Soft Delete Test"}
+            )
+        entity_id = response.json()["id"]
+        
+        # Soft Delete (PATCH is_deleted=True)
+        response = client.patch(
+            f"/entity/{entity_id}",
+            json={"body": {"is_deleted": True}}
+        )
+        assert response.status_code == 200
+        assert response.json()["is_deleted"] is True
+        
+        # Verify entity still exists but is marked deleted
+        response = client.get(f"/entity/{entity_id}")
+        assert response.status_code == 200
+        assert response.json()["is_deleted"] is True
+        
+        # Restore (PATCH is_deleted=False)
+        response = client.patch(
+            f"/entity/{entity_id}",
+            json={"body": {"is_deleted": False}}
+        )
+        assert response.status_code == 200
+        assert response.json()["is_deleted"] is False
+        
+        # Verify entity is restored
+        response = client.get(f"/entity/{entity_id}")
+        assert response.status_code == 200
+        assert response.json()["is_deleted"] is False
     
     def test_delete_all_entities(self, client, sample_images, clean_media_dir):
         """Test deleting all entities."""
