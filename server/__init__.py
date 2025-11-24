@@ -18,7 +18,11 @@ async def validation_exception_handler(request, exc):
     Preserve the default FastAPI HTTPException handling shape so callers
     get the usual FastAPI response body. Kept here so you can customize it later.
     """
-    return await app.default_exception_handler(request, exc)
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
 
 
 app.include_router(router)

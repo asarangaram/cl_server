@@ -39,7 +39,10 @@ class Entity(Base):
     mime_type: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     type: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     extension: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    md5: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    md5: Mapped[Optional[str]] = mapped_column(String, unique=True, index=True, nullable=True)
+    
+    # File storage
+    file_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     
     # Soft delete flag
     is_deleted: Mapped[Optional[bool]] = mapped_column(Boolean, default=False, nullable=True)

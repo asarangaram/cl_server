@@ -6,14 +6,8 @@ from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from .config import DATABASE_URL
 from .models import Base
-
-# Database configuration
-DATABASE_DIR = os.getenv("DATABASE_DIR", "./data")
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DATABASE_DIR}/entities.db")
-
-# Create database directory if it doesn't exist
-os.makedirs(DATABASE_DIR, exist_ok=True)
 
 # Create SQLAlchemy engine
 engine = create_engine(

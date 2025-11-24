@@ -7,9 +7,11 @@ from fastapi import (
     Body,
     Depends,
     File,
+    Form,
     HTTPException,
     Path,
     Query,
+    UploadFile,
     status,
 )
 from fastapi.responses import JSONResponse
@@ -18,6 +20,7 @@ from sqlalchemy.orm import Session
 from schemas import BodyCreateEntity, BodyPatchEntity, BodyUpdateEntity, Item
 
 from .database import get_db
+from .services.entity_service import DuplicateFileError
 from .services import EntityService
 
 router = APIRouter()
@@ -54,12 +57,34 @@ async def get_entities(
     responses={201: {"model": Item, "description": "Successful Response"}},
 )
 async def create_entity(
-    image: Optional[bytes] = File(None, title="Image"),
-    body: BodyCreateEntity = Body(..., embed=True),
+    is_collection: bool = Form(..., title="Is Collection"),
+    label: Optional[str] = Form(None, title="Label"),
+    description: Optional[str] = Form(None, title="Description"),
+    parent_id: Optional[int] = Form(None, title="Parent Id"),
+    image: Optional[UploadFile] = File(None, title="Image"),
     db: Session = Depends(get_db),
 ) -> Item:
     service = EntityService(db)
-    return service.create_entity(body, image)
+    
+    # Create body object from form fields
+    body = BodyCreateEntity(
+        is_collection=is_collection,
+        label=label,
+        description=description,
+        parent_id=parent_id
+    )
+    
+    # Read file bytes and filename if provided
+    file_bytes = None
+    filename = "file"
+    if image:
+        file_bytes = await image.read()
+        filename = image.filename or "file"
+    
+    try:
+        return service.create_entity(body, file_bytes, filename)
+    except DuplicateFileError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
 
 @router.delete(
@@ -108,14 +133,34 @@ async def get_entity(
 )
 async def put_entity(
     entity_id: int = Path(..., title="Entity Id"),
-    body: BodyUpdateEntity = Body(..., embed=True),
+    is_collection: bool = Form(..., title="Is Collection"),
+    label: Optional[str] = Form(None, title="Label"),
+    description: Optional[str] = Form(None, title="Description"),
+    parent_id: Optional[int] = Form(None, title="Parent Id"),
+    image: UploadFile = File(..., title="Image"),
     db: Session = Depends(get_db),
 ) -> Item:
     service = EntityService(db)
-    item = service.update_entity(entity_id, body)
-    if not item:
-        raise HTTPException(status_code=404, detail="Entity not found")
-    return item
+    
+    # Create body object from form fields
+    body = BodyUpdateEntity(
+        is_collection=is_collection,
+        label=label,
+        description=description,
+        parent_id=parent_id
+    )
+    
+    # Read file bytes and filename (mandatory for PUT)
+    file_bytes = await image.read()
+    filename = image.filename or "file"
+    
+    try:
+        item = service.update_entity(entity_id, body, file_bytes, filename)
+        if not item:
+            raise HTTPException(status_code=404, detail="Entity not found")
+        return item
+    except DuplicateFileError as e:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
 
 @router.patch(
