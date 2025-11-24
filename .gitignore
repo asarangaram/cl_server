@@ -1,0 +1,49 @@
+# Byte-compiled / optimized / compiled files
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Editor/IDE specific files
+.vscode/
+.idea/
+*.swp
+*.bak
+*~
+
+# Database files
+*.sqlite3
+*.db
+*.sqlite
+
+# Log files
+*.log
+
+# Uploaded files
+uploads/
+
+# Configuration files (if sensitive or local-only)
+.env
+.flaskenv
+config.local.py
+
+# Test reports
+.coverage
+htmlcov/
+.tox/
+
+# Docker-related files (if not part of your deployment strategy)
+docker-compose.override.yml
+.dockerignore
+
+# PyInstaller files
+*.spec
+build/
+dist/
