@@ -21,11 +21,23 @@ A FastAPI-based microservice for managing media entities (images, videos) with m
 
 2. **Install Python Dependencies**
    ```bash
-   # Install from pyproject.toml
+   # Recommended: Install directly from pyproject.toml
+   pip install -e .
+   ```
+   
+   **Optional: Generate `requirements.txt` from `pyproject.toml`**
+   
+   If you need a `requirements.txt` file for deployment or compatibility:
+   ```bash
+   # Install the package first
    pip install -e .
    
-   # Or generate requirements.txt and install
-   pip install -r requirements.txt
+   # Generate requirements.txt with pinned versions
+   pip freeze > requirements.txt
+   
+   # Or use pip-tools for better control
+   pip install pip-tools
+   pip-compile pyproject.toml
    ```
 
 3. **Configure Data Directories** (Optional)
