@@ -11,6 +11,10 @@ class UserService:
 
     def get_user(self, user_id: int) -> Optional[models.User]:
         return self.db.query(models.User).filter(models.User.id == user_id).first()
+    
+    def get_user_by_id(self, user_id: int) -> Optional[models.User]:
+        """Alias for get_user for consistency with get_user_by_username."""
+        return self.get_user(user_id)
 
     def get_user_by_username(self, username: str) -> Optional[models.User]:
         return self.db.query(models.User).filter(models.User.username == username).first()

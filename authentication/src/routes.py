@@ -23,14 +23,15 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     )
     try:
         payload = auth_utils.decode_token(token)
-        username: str = payload.get("sub")
-        if username is None:
+        user_id_str: str = payload.get("sub")
+        if user_id_str is None:
             raise credentials_exception
+        user_id = int(user_id_str)  # Convert string ID back to integer
     except Exception:
         raise credentials_exception
         
     user_service = service.UserService(db)
-    user = user_service.get_user_by_username(username)
+    user = user_service.get_user_by_id(user_id)
     if user is None:
         raise credentials_exception
     return user
