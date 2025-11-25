@@ -32,6 +32,10 @@ class Entity(Base):
     updated_date: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     create_date: Mapped[Optional[int]] = mapped_column(BigInteger, nullable=True)
     
+    # User identity tracking
+    added_by: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    updated_by: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    
     # File metadata
     file_size: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     height: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)

@@ -198,3 +198,150 @@ Files are stored securely to prevent accidental overwrites.
 - **Versioning**: Tracks history of all changes. Query past states using the `version` parameter.
 - **Soft Deletes**: Entities are marked as deleted rather than removed from the database.
 - **Pagination**: Efficiently handles large datasets.
+
+## Authentication
+
+The media store service supports configurable authentication with three operational modes.
+
+### Configuration Modes
+
+#### 1. Normal Mode (Default)
+Write APIs require authentication, read APIs are open.
+
+```bash
+AUTH_DISABLED=false
+READ_AUTH_ENABLED=false
+```
+
+#### 2. Read Auth Enabled
+Both write and read APIs require authentication.
+
+```bash
+AUTH_DISABLED=false
+READ_AUTH_ENABLED=true
+```
+
+#### 3. Demo Mode
+All APIs are open without authentication.
+
+```bash
+AUTH_DISABLED=true
+```
+
+### Authentication Flow
+
+The service uses JWT tokens with ES256 signature verification. Tokens must be provided in the `Authorization` header:
+
+```bash
+curl -H "Authorization: Bearer <jwt_token>" http://localhost:8000/entity/
+```
+
+### Permission Resolution
+
+Here's how permissions are resolved for each request:
+
+```python
+# Pseudo code for permission resolution
+
+def resolve_write_permission(request):
+    """Resolve permission for write operations (POST, PUT, PATCH, DELETE)"""
+    
+    # Step 1: Check demo mode
+    if AUTH_DISABLED:
+        return ALLOW  # Demo mode bypasses all auth
+    
+    # Step 2: Extract and validate JWT token
+    token = extract_token_from_header(request.headers["Authorization"])
+    if not token:
+        return DENY  # No token provided
+    
+    try:
+        payload = verify_jwt_signature(token, public_key, algorithm="ES256")
+    except InvalidSignature:
+        return DENY  # Invalid token
+    except TokenExpired:
+        return DENY  # Expired token
+    
+    # Step 3: Extract user info from payload
+    user_id = payload.get("sub")  # User identifier
+    permissions = payload.get("permissions", [])  # List of permissions
+    is_admin = payload.get("is_admin", False)  # Admin flag
+    
+    # Step 4: Check permissions
+    if is_admin:
+        return ALLOW  # Admins bypass permission checks
+    
+    if "media_store_write" in permissions:
+        return ALLOW  # User has write permission
+    
+    return DENY  # Insufficient permissions
+
+
+def resolve_read_permission(request):
+    """Resolve permission for read operations (GET)"""
+    
+    # Step 1: Check demo mode
+    if AUTH_DISABLED:
+        return ALLOW  # Demo mode bypasses all auth
+    
+    # Step 2: Check if read auth is enabled
+    if not READ_AUTH_ENABLED:
+        return ALLOW  # Read APIs are open by default
+    
+    # Step 3: Extract and validate JWT token
+    token = extract_token_from_header(request.headers["Authorization"])
+    if not token:
+        return DENY  # Read auth enabled but no token
+    
+    try:
+        payload = verify_jwt_signature(token, public_key, algorithm="ES256")
+    except InvalidSignature:
+        return DENY
+    except TokenExpired:
+        return DENY
+    
+    # Step 4: Extract user info and check permissions
+    is_admin = payload.get("is_admin", False)
+    permissions = payload.get("permissions", [])
+    
+    if is_admin:
+        return ALLOW
+    
+    if "media_store_read" in permissions:
+        return ALLOW
+    
+    return DENY
+```
+
+### JWT Payload Structure
+
+Expected JWT payload format:
+
+```json
+{
+  "sub": "user123",
+  "permissions": ["media_store_read", "media_store_write"],
+  "is_admin": false,
+  "exp": 1700000000
+}
+```
+
+### Required Permissions
+
+- **`media_store_read`**: Required for GET operations when `READ_AUTH_ENABLED=true`
+- **`media_store_write`**: Required for POST, PUT, PATCH, DELETE operations
+- **Admin users** (`is_admin: true`): Bypass all permission checks
+
+### Public Key Configuration
+
+The service requires the authentication service's public key for JWT verification:
+
+```bash
+# Default path
+PUBLIC_KEY_PATH=../data/public_key.pem
+
+# Custom path
+PUBLIC_KEY_PATH=/path/to/your/public_key.pem
+```
+
+The public key must be in PEM format (ES256 algorithm).

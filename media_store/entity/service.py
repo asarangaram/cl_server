@@ -112,6 +112,8 @@ class EntityService:
             added_date=entity.added_date,
             updated_date=entity.updated_date,
             create_date=entity.create_date,
+            added_by=entity.added_by,
+            updated_by=entity.updated_by,
             file_size=entity.file_size,
             height=entity.height,
             width=entity.width,
@@ -250,7 +252,8 @@ class EntityService:
         self, 
         body: BodyCreateEntity, 
         image: Optional[bytes] = None,
-        filename: str = "file"
+        filename: str = "file",
+        user_id: Optional[str] = None
     ) -> Item:
         """
         Create a new entity.
@@ -259,6 +262,7 @@ class EntityService:
             body: Entity creation data
             image: Optional image file bytes
             filename: Original filename
+            user_id: Optional user identifier from JWT (None in demo mode)
             
         Returns:
             Created Item instance
@@ -312,6 +316,8 @@ class EntityService:
             md5=file_meta.get("md5"),
             file_path=file_path,
             is_deleted=False,
+            added_by=user_id,
+            updated_by=user_id,
         )
         
         try:
@@ -332,7 +338,8 @@ class EntityService:
         entity_id: int, 
         body: BodyUpdateEntity,
         image: bytes,
-        filename: str = "file"
+        filename: str = "file",
+        user_id: Optional[str] = None
     ) -> Optional[Item]:
         """
         Fully update an existing entity (PUT) - requires file upload.
@@ -342,6 +349,7 @@ class EntityService:
             body: Entity update data
             image: Image file bytes (mandatory for PUT)
             filename: Original filename
+            user_id: Optional user identifier from JWT (None in demo mode)
             
         Returns:
             Updated Item instance or None if not found
@@ -406,6 +414,7 @@ class EntityService:
         entity.description = body.description
         entity.parent_id = body.parent_id
         entity.updated_date = now
+        entity.updated_by = user_id
 
         
         try:
@@ -420,13 +429,14 @@ class EntityService:
         
         return self._entity_to_item(entity)
     
-    def patch_entity(self, entity_id: int, body: BodyPatchEntity) -> Optional[Item]:
+    def patch_entity(self, entity_id: int, body: BodyPatchEntity, user_id: Optional[str] = None) -> Optional[Item]:
         """
         Partially update an existing entity (PATCH).
         
         Args:
             entity_id: Entity ID
             body: Entity patch data (only provided fields will be updated)
+            user_id: Optional user identifier from JWT (None in demo mode)
             
         Returns:
             Updated Item instance or None if not found
@@ -440,6 +450,7 @@ class EntityService:
             setattr(entity, field, value)
         
         entity.updated_date = self._now_timestamp()
+        entity.updated_by = user_id
         
         self.db.commit()
         self.db.refresh(entity)

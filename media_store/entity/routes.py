@@ -99,9 +99,12 @@ async def create_entity(
     parent_id: Optional[int] = Form(None, title="Parent Id"),
     image: Optional[UploadFile] = File(None, title="Image"),
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user_with_write_permission),
+    current_user: Optional[dict] = Depends(get_current_user_with_write_permission),
 ) -> Item:
     service = EntityService(db)
+    
+    # Extract user_id from JWT payload (None in demo mode)
+    user_id = current_user.get("sub") if current_user else None
     
     # Create body object from form fields
     body = BodyCreateEntity(
@@ -119,7 +122,7 @@ async def create_entity(
         filename = image.filename or "file"
     
     try:
-        return service.create_entity(body, file_bytes, filename)
+        return service.create_entity(body, file_bytes, filename, user_id)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except DuplicateFileError as e:
@@ -185,14 +188,17 @@ async def get_entity(
 async def put_entity(
     entity_id: int = Path(..., title="Entity Id"),
     is_collection: bool = Form(..., title="Is Collection"),
-    label: Optional[str] = Form(None, title="Label"),
+    label: str = Form(..., title="Label"),
     description: Optional[str] = Form(None, title="Description"),
     parent_id: Optional[int] = Form(None, title="Parent Id"),
     image: Optional[UploadFile] = File(None, title="Image"),
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user_with_write_permission),
+    current_user: Optional[dict] = Depends(get_current_user_with_write_permission),
 ) -> Item:
     service = EntityService(db)
+    
+    # Extract user_id from JWT payload (None in demo mode)
+    user_id = current_user.get("sub") if current_user else None
     
     # Create body object from form fields
     body = BodyUpdateEntity(
@@ -210,9 +216,9 @@ async def put_entity(
         filename = image.filename or "file"
     
     try:
-        item = service.update_entity(entity_id, body, file_bytes, filename)
+        item = service.update_entity(entity_id, body, file_bytes, filename, user_id)
         if not item:
-            raise HTTPException(status_code=404, detail="Entity not found")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entity not found")
         return item
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -235,10 +241,14 @@ async def patch_entity(
     entity_id: int, 
     body: BodyPatchEntity = Body(..., embed=True), 
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user_with_write_permission),
+    current_user: Optional[dict] = Depends(get_current_user_with_write_permission),
 ) -> Item:
     service = EntityService(db)
-    item = service.patch_entity(entity_id, body)
+    
+    # Extract user_id from JWT payload (None in demo mode)
+    user_id = current_user.get("sub") if current_user else None
+    
+    item = service.patch_entity(entity_id, body, user_id)
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Entity not found")
     return item

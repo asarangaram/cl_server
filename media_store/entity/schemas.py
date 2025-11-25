@@ -38,6 +38,8 @@ class Item(BaseModel):
     updated_date: Optional[int] = Field(None, title="Updated Date", read_only=True)
     is_deleted: Optional[bool] = Field(None, title="Is Deleted")
     create_date: Optional[int] = Field(None, title="Create Date", read_only=True)
+    added_by: Optional[str] = Field(None, title="Added By", read_only=True)
+    updated_by: Optional[str] = Field(None, title="Updated By", read_only=True)
     file_size: Optional[int] = Field(None, title="File Size", read_only=True)
     height: Optional[int] = Field(None, title="Height", read_only=True)
     width: Optional[int] = Field(None, title="Width", read_only=True)
