@@ -154,3 +154,44 @@ def file_storage_service(clean_media_dir):
     from entity.file_storage import FileStorageService
     return FileStorageService(base_dir=str(clean_media_dir))
 
+
+@pytest.fixture(scope="function")
+def auth_client(test_engine, clean_media_dir):
+    """Create a test client WITHOUT auth override for testing authentication.
+    
+    This client does NOT bypass authentication, allowing proper testing of auth flows.
+    """
+    # Create session maker
+    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
+    
+    # Override the get_db dependency
+    def override_get_db():
+        try:
+            db = TestingSessionLocal()
+            yield db
+        finally:
+            db.close()
+    
+    # Import app and override only the database dependency
+    from entity import app
+    from entity.database import get_db
+    from entity.service import EntityService
+    
+    app.dependency_overrides[get_db] = override_get_db
+    
+    # Monkey patch EntityService to use test media directory
+    original_init = EntityService.__init__
+    
+    def patched_init(self, db, base_dir=None):
+        original_init(self, db, base_dir=str(clean_media_dir))
+    
+    EntityService.__init__ = patched_init
+    
+    # Create test client
+    with TestClient(app) as test_client:
+        yield test_client
+    
+    # Cleanup
+    EntityService.__init__ = original_init
+    app.dependency_overrides.clear()
+

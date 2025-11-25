@@ -28,7 +28,7 @@ from .schemas import (
 
 from .database import get_db
 from .service import DuplicateFileError, EntityService
-from .auth import get_current_user_with_write_permission
+from .auth import get_current_user_with_write_permission, get_current_user_with_read_permission
 
 router = APIRouter()
 
@@ -54,6 +54,7 @@ async def get_entities(
         None, title="Search Query", description="Optional search query"
     ),
     db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_with_read_permission),
 ) -> PaginatedResponse:
     service = EntityService(db)
     items, total_count = service.get_entities(
@@ -159,6 +160,7 @@ async def get_entity(
         None, title="Content", description="Optional content query"
     ),
     db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_with_read_permission),
 ) -> Item:
     service = EntityService(db)
     item = service.get_entity_by_id(entity_id, version=version)
@@ -276,6 +278,7 @@ async def delete_entity(
 async def get_entity_versions(
     entity_id: int = Path(..., title="Entity Id"),
     db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_with_read_permission),
 ) -> List[dict]:
     service = EntityService(db)
     versions = service.get_entity_versions(entity_id)
