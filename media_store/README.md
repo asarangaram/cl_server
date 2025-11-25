@@ -21,7 +21,25 @@ A FastAPI-based microservice for managing media entities (images, videos) with m
 
 2. **Install Python Dependencies**
    ```bash
+   # Install from pyproject.toml
+   pip install -e .
+   
+   # Or generate requirements.txt and install
    pip install -r requirements.txt
+   ```
+
+3. **Configure Data Directories** (Optional)
+   
+   By default, the application stores data in `../data/` (outside the `media_store/` directory):
+   - Database: `../data/media_store.db`
+   - Media files: `../data/media_store/`
+   
+   You can override these paths using environment variables:
+   ```bash
+   export DATABASE_DIR="/path/to/your/data"
+   export MEDIA_STORAGE_DIR="/path/to/your/media"
+   # Or override the full database URL
+   export DATABASE_URL="sqlite:////path/to/your/database.db"
    ```
 
 ## Running the Server

@@ -19,7 +19,6 @@ from sqlalchemy.pool import StaticPool
 from test_config import (
     IMAGES_DIR,
     TEST_IMAGES,
-    TEST_MEDIA_DIR_NAME,
     TEST_DB_URL,
     get_all_test_images,
 )
@@ -110,18 +109,18 @@ def client(test_engine, clean_media_dir):
 @pytest.fixture(scope="function")
 def clean_media_dir():
     """Clean up media files directory before and after tests."""
-    media_dir = Path(f"./{TEST_MEDIA_DIR_NAME}")
+    from test_config import TEST_MEDIA_DIR
     
     # Clean before test
-    if media_dir.exists():
-        shutil.rmtree(media_dir)
-    media_dir.mkdir(parents=True, exist_ok=True)
+    if TEST_MEDIA_DIR.exists():
+        shutil.rmtree(TEST_MEDIA_DIR)
+    TEST_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
     
-    yield media_dir
+    yield TEST_MEDIA_DIR
     
     # Clean after test
-    if media_dir.exists():
-        shutil.rmtree(media_dir)
+    if TEST_MEDIA_DIR.exists():
+        shutil.rmtree(TEST_MEDIA_DIR)
 
 
 @pytest.fixture

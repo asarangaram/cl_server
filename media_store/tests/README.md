@@ -12,8 +12,10 @@ pytest
 pytest -v
 
 # Run with coverage report
-pytest --cov=server --cov-report=html
+pytest --cov=entity --cov-report=html
 ```
+
+**Note:** Test artifacts (media files) are created in `../test_artifacts/media_store/` (outside the `media_store/` directory) to keep the project clean. These are automatically cleaned up after each test run.
 
 ## Test Structure
 

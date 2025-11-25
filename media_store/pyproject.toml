@@ -1,3 +1,20 @@
+[project]
+name = "media-store"
+version = "0.1.0"
+description = "FastAPI-based microservice for managing media entities with metadata extraction, versioning, and duplicate detection"
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.23.0",
+    "python-multipart>=0.0.6",
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.12.0",
+    "sqlalchemy-continuum>=1.4.0",
+    "clmediakit @ git+ssh://git@github.com/asarangaram/clmediakit.git",
+    "pytest>=7.4.0",
+    "httpx>=0.24.0",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
@@ -6,7 +23,7 @@ python_functions = ["test_*"]
 addopts = "-v --tb=short"
 
 [tool.coverage.run]
-source = ["server"]
+source = ["entity"]
 omit = ["tests/*", "*/conftest.py"]
 
 [tool.coverage.report]
@@ -17,3 +34,4 @@ exclude_lines = [
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
 ]
+

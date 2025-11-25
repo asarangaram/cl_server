@@ -42,6 +42,26 @@ server/
 - `services/` - Business logic isolated from HTTP concerns
 - `config.py` - Top-level for application-wide settings
 
+### Data Storage
+
+**Production Data Location:**
+- Database: `../data/media_store.db`
+- Media files: `../data/media_store/`
+
+All persistent data is stored outside the `media_store/` directory in `../data/` for cleaner project structure and easier backup management.
+
+**Environment Variables:**
+You can override the default paths using environment variables:
+- `DATABASE_DIR` - Directory for database file (default: `../data`)
+- `DATABASE_URL` - Full database URL (default: `sqlite:///../data/media_store.db`)
+- `MEDIA_STORAGE_DIR` - Directory for media files (default: `../data/media_store`)
+
+Example:
+```bash
+export DATABASE_DIR="/var/lib/media-store"
+export MEDIA_STORAGE_DIR="/var/lib/media-store/files"
+```
+
 ## Design Choices
 
 ### 1. Entity Versioning

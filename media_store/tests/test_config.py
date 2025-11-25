@@ -22,6 +22,10 @@ IMAGES_DIR = MEDIA_STORE_DIR.parent / "images"
 # Test files list path
 TEST_FILES_LIST = TESTS_DIR / "test_files.txt"
 
+# Test artifacts directory (outside media_store to keep project clean)
+TEST_ARTIFACTS_DIR = MEDIA_STORE_DIR.parent / "test_artifacts" / "media_store"
+TEST_MEDIA_DIR = TEST_ARTIFACTS_DIR / "media_files"
+
 
 def load_test_files() -> List[Path]:
     """
@@ -73,7 +77,6 @@ SECONDARY_TEST_IMAGE = TEST_IMAGES[1] if len(TEST_IMAGES) > 1 else None
 TERTIARY_TEST_IMAGE = TEST_IMAGES[2] if len(TEST_IMAGES) > 2 else None
 
 # Test configuration constants
-TEST_MEDIA_DIR_NAME = "test_media_files"
 TEST_DB_URL = "sqlite:///:memory:"
 
 __all__ = [
@@ -81,12 +84,14 @@ __all__ = [
     'MEDIA_STORE_DIR',
     'IMAGES_DIR',
     'TEST_FILES_LIST',
+    'TEST_ARTIFACTS_DIR',
+    'TEST_MEDIA_DIR',
     'TEST_IMAGES',
     'PRIMARY_TEST_IMAGE',
     'SECONDARY_TEST_IMAGE',
     'TERTIARY_TEST_IMAGE',
-    'TEST_MEDIA_DIR_NAME',
     'TEST_DB_URL',
     'load_test_files',
     'get_all_test_images',
 ]
+
