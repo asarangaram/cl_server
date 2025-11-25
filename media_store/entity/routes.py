@@ -28,6 +28,7 @@ from .schemas import (
 
 from .database import get_db
 from .service import DuplicateFileError, EntityService
+from .auth import get_current_user_with_write_permission
 
 router = APIRouter()
 
@@ -97,6 +98,7 @@ async def create_entity(
     parent_id: Optional[int] = Form(None, title="Parent Id"),
     image: Optional[UploadFile] = File(None, title="Image"),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user_with_write_permission),
 ) -> Item:
     service = EntityService(db)
     
@@ -131,7 +133,10 @@ async def create_entity(
     operation_id="delete_collection_entity__delete",
     responses={200: {"model": None, "description": "Successful Response"}},
 )
-async def delete_collection(db: Session = Depends(get_db)) -> JSONResponse:
+async def delete_collection(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user_with_write_permission),
+) -> JSONResponse:
     service = EntityService(db)
     service.delete_all_entities()
     return JSONResponse(content=None, status_code=status.HTTP_200_OK)
@@ -183,6 +188,7 @@ async def put_entity(
     parent_id: Optional[int] = Form(None, title="Parent Id"),
     image: Optional[UploadFile] = File(None, title="Image"),
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user_with_write_permission),
 ) -> Item:
     service = EntityService(db)
     
@@ -226,7 +232,8 @@ async def put_entity(
 async def patch_entity(
     entity_id: int, 
     body: BodyPatchEntity = Body(..., embed=True), 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user_with_write_permission),
 ) -> Item:
     service = EntityService(db)
     item = service.patch_entity(entity_id, body)
@@ -246,7 +253,11 @@ async def patch_entity(
         404: {"description": "Entity not found"},
     },
 )
-async def delete_entity(entity_id: int, db: Session = Depends(get_db)) -> Item:
+async def delete_entity(
+    entity_id: int, 
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user_with_write_permission),
+) -> Item:
     service = EntityService(db)
     item = service.delete_entity(entity_id)
     if not item:

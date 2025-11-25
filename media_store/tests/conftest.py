@@ -86,8 +86,15 @@ def client(test_engine, clean_media_dir):
     from entity import app
     from entity.database import get_db
     from entity.service import EntityService
+    from entity.auth import get_current_user_with_write_permission
     
     app.dependency_overrides[get_db] = override_get_db
+    
+    # Override auth dependency to bypass authentication in tests
+    def override_auth():
+        return {"sub": "testuser", "permissions": ["media_store_write"], "is_admin": True}
+        
+    app.dependency_overrides[get_current_user_with_write_permission] = override_auth
     
     # Monkey patch EntityService to use test media directory
     original_init = EntityService.__init__

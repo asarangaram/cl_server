@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "media-store"
 version = "0.1.0"
@@ -13,7 +17,12 @@ dependencies = [
     "clmediakit @ git+ssh://git@github.com/asarangaram/clmediakit.git",
     "pytest>=7.4.0",
     "httpx>=0.24.0",
+    "python-jose[cryptography]>=3.3.0",
 ]
+
+[tool.setuptools.packages.find]
+include = ["entity*"]
+exclude = ["tests*", "alembic*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

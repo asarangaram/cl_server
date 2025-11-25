@@ -12,6 +12,10 @@ DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DATABASE_DIR}/media_store.
 # Can be overridden with MEDIA_STORAGE_DIR environment variable
 MEDIA_STORAGE_DIR = os.getenv("MEDIA_STORAGE_DIR", f"{DATABASE_DIR}/media_store")
 
+# Authentication configuration
+# Path to the public key used for validating JWTs
+PUBLIC_KEY_PATH = os.getenv("PUBLIC_KEY_PATH", f"{DATABASE_DIR}/public_key.pem")
+
 # Ensure directories exist
 Path(DATABASE_DIR).mkdir(parents=True, exist_ok=True)
 Path(MEDIA_STORAGE_DIR).mkdir(parents=True, exist_ok=True)
