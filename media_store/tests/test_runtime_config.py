@@ -6,9 +6,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from entity.database import Base, get_db
-from entity.models import ServiceConfig
-from entity.config_service import ConfigService
+from src.database import Base, get_db
+from src.models import ServiceConfig
+from src.config_service import ConfigService
 from main import app
 
 

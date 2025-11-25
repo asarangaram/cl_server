@@ -47,7 +47,7 @@ class TestAuthenticationLogic:
     
     def test_get_current_user_with_write_permission_allows_write_permission(self):
         """User with media_store_write permission should be allowed."""
-        from entity.auth import get_current_user_with_write_permission
+        from src.auth import get_current_user_with_write_permission
         import asyncio
         
         # Mock user with write permission
@@ -59,7 +59,7 @@ class TestAuthenticationLogic:
     
     def test_get_current_user_with_write_permission_allows_admin(self):
         """Admin user should be allowed even without specific permission."""
-        from entity.auth import get_current_user_with_write_permission
+        from src.auth import get_current_user_with_write_permission
         import asyncio
         
         user = {"sub": "admin", "permissions": [], "is_admin": True}
@@ -69,7 +69,7 @@ class TestAuthenticationLogic:
     
     def test_get_current_user_with_write_permission_rejects_wrong_permission(self):
         """User with only read permission should be rejected."""
-        from entity.auth import get_current_user_with_write_permission
+        from src.auth import get_current_user_with_write_permission
         import asyncio
         
         user = {"sub": "testuser", "permissions": ["media_store_read"], "is_admin": False}
@@ -81,7 +81,7 @@ class TestAuthenticationLogic:
     
     def test_get_current_user_with_write_permission_rejects_none_user(self):
         """None user (no auth) should be rejected when auth is not disabled."""
-        from entity.auth import get_current_user_with_write_permission, AUTH_DISABLED
+        from src.auth import get_current_user_with_write_permission, AUTH_DISABLED
         import asyncio
         
         # Only test if auth is enabled
@@ -93,8 +93,8 @@ class TestAuthenticationLogic:
     
     def test_get_current_user_with_read_permission_allows_read_permission(self):
         """User with media_store_read permission should be allowed when read auth is enabled."""
-        from entity.auth import get_current_user_with_read_permission
-        from entity.config_service import ConfigService
+        from src.auth import get_current_user_with_read_permission
+        from src.config_service import ConfigService
         from unittest.mock import MagicMock
         import asyncio
         
@@ -120,8 +120,8 @@ class TestAuthenticationLogic:
     
     def test_get_current_user_with_read_permission_allows_none_when_disabled(self):
         """None user should be allowed when read auth is disabled."""
-        from entity.auth import get_current_user_with_read_permission
-        from entity.config_service import ConfigService
+        from src.auth import get_current_user_with_read_permission
+        from src.config_service import ConfigService
         from unittest.mock import MagicMock
         import asyncio
         
@@ -146,20 +146,20 @@ class TestAuthenticationModes:
     
     def test_auth_disabled_flag_defaults_to_false(self):
         """AUTH_DISABLED should default to false."""
-        from entity.config import AUTH_DISABLED
+        from src.config import AUTH_DISABLED
         # In test environment without env var, should be False
         # (This may vary based on test setup)
         assert isinstance(AUTH_DISABLED, bool)
     
     def test_read_auth_enabled_flag_defaults_to_false(self):
         """READ_AUTH_ENABLED should default to false."""
-        from entity.config import READ_AUTH_ENABLED
+        from src.config import READ_AUTH_ENABLED
         # In test environment without env var, should be False
         assert isinstance(READ_AUTH_ENABLED, bool)
     
     def test_demo_mode_bypasses_write_auth(self):
         """When AUTH_DISABLED=true, write auth should be bypassed."""
-        from entity.auth import get_current_user_with_write_permission, AUTH_DISABLED
+        from src.auth import get_current_user_with_write_permission, AUTH_DISABLED
         import asyncio
         
         if AUTH_DISABLED:
@@ -169,8 +169,8 @@ class TestAuthenticationModes:
     
     def test_demo_mode_bypasses_read_auth(self):
         """When AUTH_DISABLED=true, read auth should be bypassed."""
-        from entity.auth import get_current_user_with_read_permission, AUTH_DISABLED
-        from entity.config_service import ConfigService
+        from src.auth import get_current_user_with_read_permission, AUTH_DISABLED
+        from src.config_service import ConfigService
         from unittest.mock import MagicMock
         import asyncio
         

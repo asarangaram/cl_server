@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 # Initialize versioning before importing models
 make_versioned(user_cls=None)
 
-from entity.models import Base
+from src.models import Base
 
 # Configure mappers after models are imported
 configure_mappers()

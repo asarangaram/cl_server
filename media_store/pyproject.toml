@@ -21,18 +21,16 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["entity*"]
-exclude = ["tests*", "alembic*"]
+include = ["src*"]
+exclude = ["tests*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
 addopts = "-v --tb=short"
 
 [tool.coverage.run]
-source = ["entity"]
+source = ["src"]
 omit = ["tests/*", "*/conftest.py"]
 
 [tool.coverage.report]

@@ -41,7 +41,7 @@ def test_engine():
     )
     
     # Import models and configure versioning BEFORE creating tables
-    from entity.models import Base
+    from src.models import Base
     from sqlalchemy.orm import configure_mappers
     
     # This must be called before create_all to ensure version tables are created
@@ -83,10 +83,10 @@ def client(test_engine, clean_media_dir):
             db.close()
     
     # Import app and override dependency
-    from entity import app
-    from entity.database import get_db
-    from entity.service import EntityService
-    from entity.auth import get_current_user_with_write_permission
+    from src import app
+    from src.database import get_db
+    from src.service import EntityService
+    from src.auth import get_current_user_with_write_permission
     
     app.dependency_overrides[get_db] = override_get_db
     
@@ -151,7 +151,7 @@ def sample_images(test_images_dir):
 @pytest.fixture
 def file_storage_service(clean_media_dir):
     """Create a FileStorageService instance using the clean media directory."""
-    from entity.file_storage import FileStorageService
+    from src.file_storage import FileStorageService
     return FileStorageService(base_dir=str(clean_media_dir))
 
 
@@ -173,9 +173,9 @@ def auth_client(test_engine, clean_media_dir):
             db.close()
     
     # Import app and override only the database dependency
-    from entity import app
-    from entity.database import get_db
-    from entity.service import EntityService
+    from src import app
+    from src.database import get_db
+    from src.service import EntityService
     
     app.dependency_overrides[get_db] = override_get_db
     
