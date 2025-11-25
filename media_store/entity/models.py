@@ -53,4 +53,23 @@ class Entity(Base):
     is_deleted: Mapped[Optional[bool]] = mapped_column(Boolean, default=False, nullable=True)
     
     def __repr__(self) -> str:
-        return f"<Entity(id={self.id}, label={self.label}, is_collection={self.is_collection})>"
+        return f"<Entity(id={self.id}, label={self.label})>"
+
+
+class ServiceConfig(Base):
+    """SQLAlchemy model for service configuration."""
+    
+    __tablename__ = "service_config"
+    
+    # Primary key
+    key: Mapped[str] = mapped_column(String, primary_key=True)
+    
+    # Configuration value (stored as string, parsed as needed)
+    value: Mapped[str] = mapped_column(String, nullable=False)
+    
+    # Metadata
+    updated_at: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    updated_by: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    
+    def __repr__(self) -> str:
+        return f"<ServiceConfig(key={self.key}, value={self.value})>"

@@ -66,3 +66,16 @@ class PaginatedResponse(BaseModel):
     items: list[Item] = Field(..., description="List of items for the current page")
     pagination: PaginationMetadata = Field(..., description="Pagination metadata")
 
+
+# Admin configuration schemas
+class ConfigResponse(BaseModel):
+    """Response schema for configuration."""
+    read_auth_enabled: bool = Field(..., description="Whether read authentication is enabled")
+    updated_at: Optional[int] = Field(None, description="Last update timestamp (milliseconds)")
+    updated_by: Optional[str] = Field(None, description="User ID who last updated the config")
+
+
+class UpdateReadAuthConfig(BaseModel):
+    """Request schema for updating read auth configuration."""
+    enabled: bool = Field(..., description="Whether to enable read authentication")
+

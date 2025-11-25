@@ -28,6 +28,7 @@ from .schemas import (
 
 from .database import get_db
 from .service import DuplicateFileError, EntityService
+from . import schemas
 from .auth import get_current_user_with_write_permission, get_current_user_with_read_permission
 
 router = APIRouter()
@@ -306,5 +307,89 @@ async def get_entity_versions(
     operation_id="root_get",
     responses={200: {"description": "Welcome to CoLAN"}},
 )
-async def root() -> JSONResponse:
-    return JSONResponse(content={"message": "Welcome to CoLAN!"})
+async def root():
+    return "media_store service is running"
+
+
+# Admin configuration endpoints
+@router.get(
+    "/admin/config",
+    tags=["admin"],
+    summary="Get Configuration",
+    description="Get current service configuration. Requires admin access.",
+    operation_id="get_config_admin_config_get",
+    responses={200: {"model": schemas.ConfigResponse, "description": "Successful Response"}},
+)
+async def get_config(
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_with_write_permission),
+) -> schemas.ConfigResponse:
+    """Get current service configuration.
+    
+    Requires admin access.
+    """
+    # Check if user is admin
+    if not current_user or not current_user.get("is_admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    
+    from .config_service import ConfigService
+    config_service = ConfigService(db)
+    
+    # Get config metadata
+    metadata = config_service.get_config_metadata('read_auth_enabled')
+    
+    if metadata:
+        return schemas.ConfigResponse(
+            read_auth_enabled=metadata['value'].lower() == 'true',
+            updated_at=metadata['updated_at'],
+            updated_by=metadata['updated_by']
+        )
+    
+    # Default if not found
+    return schemas.ConfigResponse(
+        read_auth_enabled=False,
+        updated_at=None,
+        updated_by=None
+    )
+
+
+@router.put(
+    "/admin/config/read-auth",
+    tags=["admin"],
+    summary="Update Read Auth Configuration",
+    description="Toggle read authentication requirement. Requires admin access.",
+    operation_id="update_read_auth_config_admin_config_read_auth_put",
+    responses={200: {"model": dict, "description": "Successful Response"}},
+)
+async def update_read_auth_config(
+    config: schemas.UpdateReadAuthConfig,
+    db: Session = Depends(get_db),
+    current_user: Optional[dict] = Depends(get_current_user_with_write_permission),
+) -> dict:
+    """Update read authentication configuration.
+    
+    Requires admin access. Changes are persistent and take effect immediately.
+    """
+    # Check if user is admin
+    if not current_user or not current_user.get("is_admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    
+    from .config_service import ConfigService
+    config_service = ConfigService(db)
+    
+    # Get user ID from JWT
+    user_id = current_user.get("sub") if current_user else None
+    
+    # Update configuration
+    config_service.set_read_auth_enabled(config.enabled, user_id)
+    
+    return {
+        "read_auth_enabled": config.enabled,
+        "message": "Configuration updated successfully"
+    }

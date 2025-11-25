@@ -6,8 +6,10 @@ from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
+from sqlalchemy.orm import Session
 
 from .config import PUBLIC_KEY_PATH, AUTH_DISABLED, READ_AUTH_ENABLED
+from .database import get_db
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token", auto_error=False)
 
@@ -89,20 +91,27 @@ async def get_current_user_with_write_permission(
     return current_user
 
 async def get_current_user_with_read_permission(
-    current_user: Optional[dict] = Depends(get_current_user)
+    current_user: Optional[dict] = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> Optional[dict]:
     """Validate that the user has read permissions.
     
     In demo mode (AUTH_DISABLED=True), always allows access.
-    If READ_AUTH_ENABLED=False, allows access without authentication.
-    If READ_AUTH_ENABLED=True, requires valid token with media_store_read permission or admin status.
+    If READ_AUTH_ENABLED (from database config) is False, allows access without authentication.
+    If READ_AUTH_ENABLED is True, requires valid token with media_store_read permission or admin status.
     """
     # Demo mode: bypass permission check
     if AUTH_DISABLED:
         return None
     
+    # Check database config for read auth setting
+    from .config_service import ConfigService
+    
+    config_service = ConfigService(db)
+    read_auth_enabled = config_service.get_read_auth_enabled()
+    
     # Read auth not enabled: allow access
-    if not READ_AUTH_ENABLED:
+    if not read_auth_enabled:
         return current_user  # May be None, but that's okay
     
     # Read auth enabled but no user provided

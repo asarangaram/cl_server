@@ -93,26 +93,52 @@ class TestAuthenticationLogic:
     
     def test_get_current_user_with_read_permission_allows_read_permission(self):
         """User with media_store_read permission should be allowed when read auth is enabled."""
-        from entity.auth import get_current_user_with_read_permission, READ_AUTH_ENABLED
+        from entity.auth import get_current_user_with_read_permission
+        from entity.config_service import ConfigService
+        from unittest.mock import MagicMock
         import asyncio
         
-        # Only test if read auth is enabled
-        if READ_AUTH_ENABLED:
-            user = {"sub": "testuser", "permissions": ["media_store_read"], "is_admin": False}
-            
-            result = asyncio.run(get_current_user_with_read_permission(user))
-            assert result == user
+        # Clear cache
+        ConfigService._cache.clear()
+        ConfigService._cache_timestamps.clear()
+        
+        # Mock DB session and ConfigService
+        mock_db = MagicMock()
+        # Mock ConfigService behavior: get_read_auth_enabled returns True
+        # Since ConfigService is instantiated inside the function, we need to mock the class
+        # or mock the db query result.
+        # Easier: mock db.query(...).filter(...).first() to return a config object
+        
+        mock_config = MagicMock()
+        mock_config.value = "true"
+        mock_db.query.return_value.filter.return_value.first.return_value = mock_config
+        
+        user = {"sub": "testuser", "permissions": ["media_store_read"], "is_admin": False}
+        
+        result = asyncio.run(get_current_user_with_read_permission(user, mock_db))
+        assert result == user
     
     def test_get_current_user_with_read_permission_allows_none_when_disabled(self):
         """None user should be allowed when read auth is disabled."""
-        from entity.auth import get_current_user_with_read_permission, READ_AUTH_ENABLED
+        from entity.auth import get_current_user_with_read_permission
+        from entity.config_service import ConfigService
+        from unittest.mock import MagicMock
         import asyncio
         
-        # Only test if read auth is disabled (default)
-        if not READ_AUTH_ENABLED:
-            result = asyncio.run(get_current_user_with_read_permission(None))
-            # Should not raise exception
-            assert result is None
+        # Clear cache
+        ConfigService._cache.clear()
+        ConfigService._cache_timestamps.clear()
+        
+        # Mock DB session
+        mock_db = MagicMock()
+        # Mock ConfigService behavior: get_read_auth_enabled returns False (default or explicit)
+        mock_config = MagicMock()
+        mock_config.value = "false"
+        mock_db.query.return_value.filter.return_value.first.return_value = mock_config
+        
+        result = asyncio.run(get_current_user_with_read_permission(None, mock_db))
+        # Should not raise exception
+        assert result is None
 
 
 class TestAuthenticationModes:
@@ -144,11 +170,19 @@ class TestAuthenticationModes:
     def test_demo_mode_bypasses_read_auth(self):
         """When AUTH_DISABLED=true, read auth should be bypassed."""
         from entity.auth import get_current_user_with_read_permission, AUTH_DISABLED
+        from entity.config_service import ConfigService
+        from unittest.mock import MagicMock
         import asyncio
+        
+        # Clear cache
+        ConfigService._cache.clear()
+        ConfigService._cache_timestamps.clear()
         
         if AUTH_DISABLED:
             # In demo mode, None user should be allowed
-            result = asyncio.run(get_current_user_with_read_permission(None))
+            # Even with mock db, it should return early
+            mock_db = MagicMock()
+            result = asyncio.run(get_current_user_with_read_permission(None, mock_db))
             assert result is None
 
 
