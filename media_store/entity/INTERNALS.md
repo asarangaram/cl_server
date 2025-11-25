@@ -4,7 +4,7 @@ This document outlines the internal design choices, architecture, and potential 
 
 ## Architecture Overview
 
-The service is built using a standard FastAPI microservice architecture:
+The service is built using a standard FastAPI microservice architecture with organized package structure:
 
 - **Framework**: FastAPI (ASGI)
 - **Database**: SQLite (for simplicity/portability) with SQLAlchemy ORM
@@ -12,15 +12,46 @@ The service is built using a standard FastAPI microservice architecture:
 - **Versioning**: SQLAlchemy-Continuum
 - **Metadata**: clmediakit (wrapping exiftool)
 
+### Package Structure
+
+```
+server/
+├── config.py              # Application-wide configuration
+├── __init__.py           # FastAPI app initialization
+├── api/                  # API route handlers
+│   ├── __init__.py
+│   └── entity_routes.py  # Entity CRUD endpoints
+├── core/                 # Infrastructure & utilities
+│   ├── __init__.py
+│   ├── database.py       # Database connection & session
+│   ├── versioning.py     # SQLAlchemy-Continuum setup
+│   └── file_storage.py   # File storage service
+├── models/               # Data models & schemas
+│   ├── __init__.py
+│   ├── models.py         # SQLAlchemy ORM models
+│   └── schemas.py        # Pydantic request/response schemas
+└── services/             # Business logic layer
+    ├── __init__.py
+    └── entity_service.py # Entity operations
+```
+
+**Design Rationale:**
+- `api/` - Route handlers separated from business logic
+- `core/` - Infrastructure components (database, storage, versioning)
+- `models/` - All data structures (ORM models + Pydantic schemas)
+- `services/` - Business logic isolated from HTTP concerns
+- `config.py` - Top-level for application-wide settings
+
 ## Design Choices
 
 ### 1. Entity Versioning
 We use **SQLAlchemy-Continuum** for automatic entity versioning.
 - **Why**: It automatically tracks changes to all fields without manual history table management.
 - **Implementation**: 
-  - `make_versioned()` is called before model imports in `server/versioning.py`.
+  - `make_versioned()` is called before model imports in `server/core/versioning.py`.
   - `configure_mappers()` is called in `server/__init__.py`.
   - Versions are accessed via the `versions` relationship on the `Entity` model.
+- **Import Order**: Critical that `versioning` is imported before `models` to ensure proper setup.
 
 ### 2. Pagination
 We implemented **Offset/Limit** pagination.

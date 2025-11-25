@@ -11,13 +11,13 @@ from alembic import context
 import sys
 from pathlib import Path
 
-# Add parent directory to path to import server module
+# Add parent directory to path to import entity module
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # Initialize versioning before importing models
 make_versioned(user_cls=None)
 
-from server.models import Base
+from entity.models import Base
 
 # Configure mappers after models are imported
 configure_mappers()

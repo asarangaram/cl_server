@@ -18,7 +18,7 @@ class FileStorageService:
             base_dir: Base directory for file storage. If None, uses MEDIA_STORAGE_DIR from config.
         """
         if base_dir is None:
-            from server.config import MEDIA_STORAGE_DIR
+            from .config import MEDIA_STORAGE_DIR
             base_dir = MEDIA_STORAGE_DIR
         
         self.base_dir = Path(base_dir)

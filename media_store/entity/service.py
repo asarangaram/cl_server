@@ -10,8 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .schemas import BodyCreateEntity, BodyPatchEntity, BodyUpdateEntity, Item
-
-from ..models import Entity
+from .models import Entity
 from .file_storage import FileStorageService
 
 

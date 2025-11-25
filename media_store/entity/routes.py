@@ -27,8 +27,7 @@ from .schemas import (
 )
 
 from .database import get_db
-from .services.entity_service import DuplicateFileError
-from .services import EntityService
+from .service import DuplicateFileError, EntityService
 
 router = APIRouter()
 

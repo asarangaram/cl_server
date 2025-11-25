@@ -26,5 +26,3 @@ async def validation_exception_handler(request: Request, exc: HTTPException):
         content={"detail": exc.detail},
     )
 
-
-app.include_router(router)
