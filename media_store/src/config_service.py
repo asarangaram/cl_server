@@ -5,7 +5,7 @@ Provides database-backed configuration with in-memory caching for performance.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy.orm import Session
 
@@ -31,7 +31,7 @@ class ConfigService:
     @staticmethod
     def _now_timestamp() -> int:
         """Return current UTC timestamp in milliseconds."""
-        return int(datetime.utcnow().timestamp() * 1000)
+        return int(datetime.now(timezone.utc).timestamp() * 1000)
     
     def _is_cache_valid(self, key: str) -> bool:
         """Check if cached value is still valid.

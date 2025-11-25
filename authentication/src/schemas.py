@@ -38,9 +38,8 @@ class UserResponse(UserBase):
     id: int
     created_at: datetime
     permissions: List[str] = []
-
-    class Config:
-        from_attributes = True
+    
+    model_config = {"from_attributes": True}
 
     @field_validator("permissions", mode="before")
     @classmethod
@@ -57,6 +56,5 @@ class UserResponse(UserBase):
 
 class PermissionResponse(BaseModel):
     permission: str
-
-    class Config:
-        from_attributes = True
+    
+    model_config = {"from_attributes": True}

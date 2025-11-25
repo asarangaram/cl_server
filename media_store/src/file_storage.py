@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -38,7 +38,7 @@ class FileStorageService:
             Path object for the file storage location
         """
         # Use current date for organization
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         year = now.strftime("%Y")
         month = now.strftime("%m")
         day = now.strftime("%d")

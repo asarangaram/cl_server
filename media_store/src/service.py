@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import tempfile
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -36,7 +36,7 @@ class EntityService:
     @staticmethod
     def _now_timestamp() -> int:
         """Return current UTC timestamp in milliseconds."""
-        return int(datetime.utcnow().timestamp() * 1000)
+        return int(datetime.now(timezone.utc).timestamp() * 1000)
     
     def _extract_metadata(self, file_bytes: bytes, filename: str = "file") -> Dict:
         """
@@ -446,7 +446,7 @@ class EntityService:
             return None
         
         # Update only provided fields
-        for field, value in body.dict(exclude_unset=True).items():
+        for field, value in body.model_dump(exclude_unset=True).items():
             setattr(entity, field, value)
         
         entity.updated_date = self._now_timestamp()
