@@ -1,0 +1,24 @@
+# Vector Store - Qdrant
+
+*.pyc
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data directory (persistent storage)
+# Note: This is actually in ../data/vector_store/qdrant
+# but we gitignore it from the parent .gitignore
+
+# Docker
+.env
