@@ -32,4 +32,11 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
-__all__ = ["Base", "engine", "SessionLocal", "get_db"]
+def init_db():
+    """Initialize database."""
+    # Add any initial data seeding here if needed
+    pass
+
+
+__all__ = ["Base", "engine", "SessionLocal", "get_db", "init_db"]
+
