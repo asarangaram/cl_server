@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# Qdrant Vector Store - Stop Script
+# Can be run from anywhere
+
+set -e
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+QDRANT_DIR="$(dirname "$SCRIPT_DIR")"  # qdrant_docker directory
+
+echo "🛑 Stopping Qdrant Vector Store..."
+
+# Check if container is running
+if ! docker ps | grep -q qdrant-vector-store; then
+    echo "ℹ️  Qdrant container is not running"
+    exit 0
+fi
+
+# Stop Qdrant container
+echo "📦 Stopping Qdrant container..."
+cd "$QDRANT_DIR"
+docker-compose stop
+
+echo "✅ Qdrant stopped successfully"
+echo ""
+echo "To start again: $SCRIPT_DIR/vector_store_start"
+echo "To remove container: cd $QDRANT_DIR && docker-compose down"
+echo "To view status: cd $QDRANT_DIR && docker-compose ps"
+
+

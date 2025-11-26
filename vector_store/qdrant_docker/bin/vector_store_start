@@ -1,8 +1,14 @@
 #!/bin/bash
 
 # Qdrant Vector Store - Start Script
+# Can be run from anywhere
 
 set -e
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+QDRANT_DIR="$(dirname "$SCRIPT_DIR")"  # qdrant_docker directory
+VECTOR_STORE_DIR="$(dirname "$QDRANT_DIR")"  # vector_store directory
 
 echo "🚀 Starting Qdrant Vector Store..."
 
@@ -12,14 +18,12 @@ if ! docker info > /dev/null 2>&1; then
     exit 1
 fi
 
-# Navigate to vector_store directory
-cd "$(dirname "$0")"
-
 # Create data directory if it doesn't exist
-mkdir -p ../data/vector_store/qdrant
+mkdir -p "$VECTOR_STORE_DIR/../data/vector_store/qdrant"
 
 # Start Qdrant container
 echo "📦 Starting Qdrant container..."
+cd "$QDRANT_DIR"
 docker-compose up -d
 
 # Wait for Qdrant to be healthy
@@ -35,10 +39,10 @@ while [ $attempt -lt $max_attempts ]; do
         echo "🔌 REST API: http://localhost:6333"
         echo "🔌 gRPC API: localhost:6334"
         echo ""
-        echo "💾 Data stored in: ../data/vector_store/qdrant"
+        echo "💾 Data stored in: $VECTOR_STORE_DIR/../data/vector_store/qdrant"
         echo ""
-        echo "To stop: docker-compose stop"
-        echo "To view logs: docker-compose logs -f qdrant"
+        echo "To stop: $SCRIPT_DIR/vector_store_stop"
+        echo "To view logs: cd $QDRANT_DIR && docker-compose logs -f qdrant"
         exit 0
     fi
     
@@ -47,5 +51,6 @@ while [ $attempt -lt $max_attempts ]; do
 done
 
 echo "❌ Qdrant failed to start within 60 seconds"
-echo "Check logs with: docker-compose logs qdrant"
+echo "Check logs with: cd $QDRANT_DIR && docker-compose logs qdrant"
 exit 1
+
