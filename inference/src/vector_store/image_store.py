@@ -3,11 +3,11 @@
 from typing import Optional
 
 import numpy as np
+from cl_ml_tools import StoreInterface
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import HnswConfigDiff, PointStruct
 from qdrant_client.models import Distance, VectorParams
 
-from store_interface import StoreInterface
 
 
 
