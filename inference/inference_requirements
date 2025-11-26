@@ -1,0 +1,194 @@
+# AI Inference Microservice – Requirements Specification
+
+## 1. Overview
+The **AI Inference Microservice** performs asynchronous inference on images retrieved from an external service called **media_store**.
+
+### Key Characteristics
+- **Clients do NOT upload images.**  
+  They provide a **`media_store_id`**, and this service fetches the image via media_store API (stub for now).
+- The service performs (stubbed) inference:
+  - Image Embedding  
+  - Face Detection  
+  - Face Embedding
+- Job execution is **asynchronous**, using a **persistent SQLite-backed queue**.
+- Results are uploaded **back to media_store** under the same `media_store_id`.  
+  *(The endpoint is stubbed for now; real endpoint will replace later.)*
+- Jobs store metadata in SQLite until explicitly removed.
+- Upon completion, the service **broadcasts a job completion event**.
+- Clients **do not poll**; they query results **only after receiving the broadcast**.
+- A cleanup API is provided to purge jobs, queue entries, and temporary files.
+
+---
+
+## 2. Workflow Summary
+
+1. Client calls:
+   ```
+   POST /job/{task_type}
+   ```
+   with:
+   ```json
+   { "media_store_id": "<id>" }
+   ```
+
+2. The service fetches the source image from media_store using a *stub endpoint*:
+   ```
+   GET /media_store/get/{media_store_id}
+   ```
+
+3. The job is inserted into:
+   - `jobs` table (SQLite)
+   - SQLite persistent queue
+
+4. Background worker:
+   - Dequeues the job  
+   - Fetches the image  
+   - Performs inference (stub)  
+   - Prepares results (embeddings, detected faces, or face embeddings)  
+   - Posts results back to media_store:
+     ```
+     POST /media_store/post_results/{media_store_id}
+     ```
+   - Stores result metadata in SQLite until deletion
+
+5. When done, worker broadcasts:
+   ```json
+   { "event": "job_completed", "job_id": "<job_id>", "status": "completed" }
+   ```
+
+6. Client receives the broadcast event and then calls:
+   ```
+   GET /job/{id}
+   ```
+
+7. Client calls:
+   ```
+   DELETE /job/{id}
+   ```
+   This removes job metadata, queue entries, and temporary result files.
+
+---
+
+## 3. Supported Tasks
+
+### 3.1 Image Embedding
+- Fetch image from media_store  
+- Generate embedding (stub)  
+- Upload embedding result to media_store  
+- Store metadata in SQLite until deletion
+
+### 3.2 Face Detection
+- Detect bounding boxes and landmarks (stub)  
+- Upload face metadata & face crops to media_store  
+- Store metadata in SQLite until deletion
+
+### 3.3 Face Embedding
+- Detect faces  
+- Generate embeddings for each face  
+- Upload embeddings + face crops to media_store  
+- Store metadata in SQLite until deletion
+
+---
+
+## 4. SQLite Storage
+
+### 4.1 Database Tables
+- `jobs`  
+- `queue`  
+- `face_detection_results`  
+- `embeddings`  
+- `face_embeddings`  
+- `media_store_sync_status`
+
+### 4.2 File Storage
+Temporary artifacts stored until deletion:
+```
+/data/job/{job_id}/embedding.bin
+/data/job/{job_id}/faces/{i}.jpg
+/data/job/{job_id}/faces/{i}.bin
+```
+
+---
+
+## 5. Queue Requirements
+- Persistent SQLite-backed queue  
+- Survives crashes and restarts  
+- FIFO ordering  
+- Duplicate prevention  
+- Supports multiple workers safely  
+
+---
+
+## 6. Broadcasting
+Broadcast emitted when job completes:
+```json
+{
+  "event": "job_completed",
+  "job_id": "<id>",
+  "status": "completed"
+}
+```
+
+Broadcast implementations (pluggable):
+- MQTT  
+- SSE  
+- Webhooks (future)
+
+Clients do **not** poll until the event is received.
+
+---
+
+## 7. Media Store Integration
+
+### 7.1 Fetch Image (Stub)
+```
+GET /media_store/get/{media_store_id}
+```
+
+### 7.2 Post Results (Stub)
+```
+POST /media_store/post_results/{media_store_id}
+```
+
+Uploads:
+- Embeddings  
+- Face crops  
+- Face metadata  
+- Face embedding metadata  
+
+---
+
+## 8. API Specification
+
+### 8.1 POST /job/{task_type}
+Creates a job with provided `media_store_id`.
+
+### 8.2 GET /job/{id}
+Client retrieves result metadata only after receiving the broadcast.
+
+### 8.3 DELETE /job/{id}
+Removes all metadata and temporary files.
+
+### 8.4 DELETE /admin/cleanup
+Supports filters:
+- `older_than_seconds`
+- `status=pending/completed/all`
+- `remove_results`
+- `remove_queue`
+- `remove_orphaned_files`
+
+---
+
+## 9. Failure Handling
+- Missing media_store image → job marked `error`  
+- Failed result upload → retry with exponential backoff  
+- Persistent sync failure → status = `sync_failed`  
+
+---
+
+## 10. Non-Functional Requirements
+- SQLite must be ACID-safe  
+- Multi-worker safe queue  
+- Logging excludes raw images  
+- Round numeric output values  
+- File handling optimized for embedded/edge devices (RPi-compatible)  
