@@ -1,25 +1,32 @@
-"""Background worker for processing inference jobs."""
+"""Background worker for processing inference jobs using VectorCore."""
 
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import signal
-import sys
-import time
 from typing import Optional
 
+import numpy as np
+from cl_ml_tools import VectorCore
+from PIL import Image
 from sqlalchemy.orm import Session
 
-from .config import WORKER_MAX_RETRIES, WORKER_POLL_INTERVAL
+from .config import QDRANT_URL, WORKER_MAX_RETRIES, WORKER_POLL_INTERVAL
 from .database import SessionLocal
-from .file_storage import FileStorage
-from .inference_stubs import detect_faces, generate_face_embeddings, generate_image_embedding
+from .inferences import (
+    FaceDetectionInference,
+    FaceEmbeddingInference,
+    ImageEmbeddingInference,
+    QdrantFaceStore,
+    QdrantImageStore,
+)
 from .job_service import JobService
 from .media_store_client import MediaStoreClient
-from .models import Job, MediaStoreSyncStatus
+from .models import Job
 from .queue import Queue
+
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -43,18 +50,68 @@ signal.signal(signal.SIGINT, signal_handler)
 
 
 class Worker:
-    """Background worker for processing inference jobs."""
+    """Background worker for processing inference jobs using VectorCore."""
 
     def __init__(self, worker_id: str = "worker-1"):
         """
-        Initialize worker.
+        Initialize worker with ML models and vector stores.
 
         Args:
             worker_id: Unique worker identifier
         """
         self.worker_id = worker_id
         self.media_store_client = MediaStoreClient()
-        self.file_storage = FileStorage()
+
+        logger.info("Initializing ML models...")
+
+        # Initialize inference engines
+        self.image_inference = ImageEmbeddingInference()
+        self.face_detection = FaceDetectionInference()
+        self.face_inference = FaceEmbeddingInference()
+
+        # Initialize vector stores
+        self.image_store = QdrantImageStore(url=QDRANT_URL, logger=logger)
+        self.face_store = QdrantFaceStore(url=QDRANT_URL, logger=logger)
+
+
+        # Initialize VectorCore for image embeddings
+        self.image_vector_core = VectorCore(
+            inference_engine=self.image_inference,
+            store_interface=self.image_store,
+            logger=logger,
+            preprocess_cb=self._preprocess_image,
+        )
+
+        # Initialize VectorCore for face embeddings
+        self.face_vector_core = VectorCore(
+            inference_engine=self.face_inference,
+            store_interface=self.face_store,
+            logger=logger,
+            preprocess_cb=self._preprocess_image,
+        )
+
+        logger.info("✓ Worker initialized successfully")
+
+    def _preprocess_image(self, data) -> Optional[np.ndarray]:
+        """
+        Preprocess image data for inference.
+
+        Args:
+            data: Image data (PIL Image or numpy array)
+
+        Returns:
+            Preprocessed numpy array or None
+        """
+        try:
+            if isinstance(data, np.ndarray):
+                return data
+            elif isinstance(data, Image.Image):
+                return np.array(data.convert("RGB"), dtype=np.uint8)
+            else:
+                return None
+        except Exception as e:
+            logger.error(f"Error preprocessing image: {e}")
+            return None
 
     async def run(self):
         """Run the worker loop."""
@@ -87,7 +144,7 @@ class Worker:
 
     async def process_job(self, job_id: str, db: Session):
         """
-        Process a single job.
+        Process a single job using VectorCore.
 
         Args:
             job_id: Job identifier
@@ -107,23 +164,26 @@ class Worker:
 
             # Fetch image from media_store
             logger.info(f"Fetching image for job {job_id} from media_store")
-            image = await self.media_store_client.fetch_image(job.media_store_id)
+            image_data = await self.media_store_client.fetch_image(job.media_store_id)
+
+            # Convert to PIL Image
+            image = Image.open(image_data)
 
             # Run inference based on task type
             if job.task_type == "image_embedding":
-                result = await self.process_image_embedding(job_id, image)
+                result = await self.process_image_embedding(job_id, job.media_store_id, image)
             elif job.task_type == "face_detection":
                 result = await self.process_face_detection(job_id, image)
+                # Upload face detection results to media_store
+                await self.upload_results_with_retry(job.media_store_id, result, db, job_id)
             elif job.task_type == "face_embedding":
-                result = await self.process_face_embedding(job_id, image)
+                result = await self.process_face_embedding(job_id, job.media_store_id, image)
             else:
                 raise ValueError(f"Unknown task type: {job.task_type}")
 
-            # Upload results to media_store (with retry)
-            await self.upload_results_with_retry(job.media_store_id, result, db, job_id)
-
             # Update job status to completed
             service.update_job_status(job_id, "completed", result=result)
+
 
             logger.info(f"Job {job_id} completed successfully")
 
@@ -147,72 +207,133 @@ class Worker:
                 service.update_job_status(job_id, "error", error_message=str(e))
                 logger.error(f"Job {job_id} failed after {WORKER_MAX_RETRIES} retries")
 
-    async def process_image_embedding(self, job_id: str, image) -> dict:
-        """Process image embedding task."""
-        logger.info(f"Generating image embedding for job {job_id}")
+    async def process_image_embedding(self, job_id: str, media_store_id: str, image: Image.Image) -> dict:
+        """
+        Process image embedding task using VectorCore.
 
-        # Generate embedding
-        result = generate_image_embedding(image)
+        Args:
+            job_id: Job ID
+            media_store_id: Media store ID (used as vector store point ID)
+            image: PIL Image
 
-        # Save embedding to file
-        embedding_path = self.file_storage.save_embedding(job_id, result["embedding"])
+        Returns:
+            Result dictionary with embedding info
+        """
+        logger.info(f"Generating and storing image embedding for job {job_id}")
+
+        # Use VectorCore to generate embedding and store in Qdrant
+        # Point ID is the media_store_id (integer)
+        success = self.image_vector_core.add_file(
+            id=int(media_store_id),
+            data=image,
+            payload={
+                "job_id": job_id,
+                "media_store_id": int(media_store_id),
+                "task_type": "image_embedding",
+            },
+            force=True,  # Always update
+        )
+
+        if not success:
+            raise Exception("Failed to generate or store image embedding")
 
         return {
-            "embedding_dimension": result["dimension"],
-            "embedding_path": embedding_path,
+            "embedding_dimension": 512,
+            "stored_in_vector_db": True,
+            "collection": "image_embeddings",
+            "point_id": int(media_store_id),
         }
 
-    async def process_face_detection(self, job_id: str, image) -> dict:
-        """Process face detection task."""
+    async def process_face_detection(self, job_id: str, image: Image.Image) -> dict:
+        """
+        Process face detection task.
+
+        Args:
+            job_id: Job ID
+            image: PIL Image
+
+        Returns:
+            Result dictionary with detected faces
+        """
         logger.info(f"Detecting faces for job {job_id}")
 
+        # Convert PIL to numpy
+        image_np = np.array(image.convert("RGB"), dtype=np.uint8)
+
         # Detect faces
-        faces = detect_faces(image)
+        faces = self.face_detection.detect_faces(image_np)
 
-        # Save face crops
-        result_faces = []
+        # Note: Face detection results are returned and will be uploaded to media_store
+        return {
+            "faces": faces,
+            "face_count": len(faces),
+        }
+
+    async def process_face_embedding(self, job_id: str, media_store_id: str, image: Image.Image) -> dict:
+        """
+        Process face embedding task using VectorCore.
+
+        Args:
+            job_id: Job ID
+            media_store_id: Media store ID (used as base for vector store point IDs)
+            image: PIL Image
+
+        Returns:
+            Result dictionary with face embeddings info
+        """
+        logger.info(f"Generating and storing face embeddings for job {job_id}")
+
+        # Convert PIL to numpy
+        image_np = np.array(image.convert("RGB"), dtype=np.uint8)
+
+        # Get all faces with embeddings
+        faces = self.face_inference.get_all_faces(image_np)
+
+        if not faces:
+            return {
+                "faces": [],
+                "face_count": 0,
+                "stored_in_vector_db": False,
+            }
+
+        # Store each face embedding in Qdrant using VectorCore
+        stored_faces = []
         for face in faces:
-            crop_path = self.file_storage.save_face_crop(job_id, face["face_index"], face["crop"])
+            face_idx = face["face_index"]
+            # Point ID: media_store_id * 1000 + face_index (ensures uniqueness)
+            point_id = int(media_store_id) * 1000 + face_idx
 
-            result_faces.append(
-                {
-                    "face_index": face["face_index"],
+            # Store in vector database
+            success = self.face_vector_core.add_file(
+                id=point_id,
+                data=face["embedding"],  # Already computed
+                payload={
+                    "job_id": job_id,
+                    "media_store_id": int(media_store_id),
+                    "face_index": face_idx,
                     "bbox": face["bbox"],
-                    "confidence": face["confidence"],
                     "landmarks": face["landmarks"],
-                    "crop_path": crop_path,
-                }
+                    "confidence": face["confidence"],
+                    "task_type": "face_embedding",
+                },
+                force=True,
             )
 
-        return {"faces": result_faces}
-
-    async def process_face_embedding(self, job_id: str, image) -> dict:
-        """Process face embedding task."""
-        logger.info(f"Generating face embeddings for job {job_id}")
-
-        # Generate face embeddings
-        faces = generate_face_embeddings(image)
-
-        # Save face crops and embeddings
-        result_faces = []
-        for face in faces:
-            crop_path = self.file_storage.save_face_crop(job_id, face["face_index"], face["crop"])
-            embedding_path = self.file_storage.save_face_embedding(
-                job_id, face["face_index"], face["embedding"]
-            )
-
-            result_faces.append(
-                {
-                    "face_index": face["face_index"],
+            if success:
+                stored_faces.append({
+                    "face_index": face_idx,
                     "bbox": face["bbox"],
                     "confidence": face["confidence"],
                     "embedding_dimension": face["embedding_dimension"],
-                    "embedding_path": embedding_path,
-                    "crop_path": crop_path,
-                }
-            )
+                    "point_id": point_id,
+                })
 
-        return {"faces": result_faces}
+        return {
+            "faces": stored_faces,
+            "face_count": len(stored_faces),
+            "stored_in_vector_db": True,
+            "collection": "face_embeddings",
+        }
 
     async def upload_results_with_retry(
         self, media_store_id: str, results: dict, db: Session, job_id: str, max_retries: int = 3
@@ -227,25 +348,10 @@ class Worker:
             job_id: Job ID
             max_retries: Maximum number of retries
         """
-        sync_status = db.query(MediaStoreSyncStatus).filter_by(job_id=job_id).first()
-
         for attempt in range(max_retries):
             try:
-                # Update sync status
-                if sync_status:
-                    sync_status.sync_status = "in_progress"
-                    sync_status.sync_attempted_at = int(time.time() * 1000)
-                    db.commit()
-
                 # Upload results
                 response = await self.media_store_client.post_results(media_store_id, results)
-
-                # Update sync status to completed
-                if sync_status:
-                    sync_status.sync_status = "completed"
-                    sync_status.sync_completed_at = int(time.time() * 1000)
-                    db.commit()
-
                 logger.info(f"Results uploaded successfully for job {job_id}")
                 return
 
@@ -258,13 +364,9 @@ class Worker:
                     await asyncio.sleep(delay)
                 else:
                     # Max retries reached
-                    if sync_status:
-                        sync_status.sync_status = "failed"
-                        sync_status.sync_error = str(e)
-                        db.commit()
-
                     logger.error(f"Failed to upload results for job {job_id} after {max_retries} attempts")
                     raise
+
 
 
 async def main():

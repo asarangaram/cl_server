@@ -1,142 +1,218 @@
-"""Face embedding inference implementation."""
+"""Face detection and embedding using RetinaFace + ArcFace (InsightFace)."""
 
 from typing import Dict, Optional
 
 import numpy as np
 from cl_ml_tools import MLInference
-
+from insightface.app import FaceAnalysis
 
 
 class FaceEmbeddingInference(MLInference):
     """
-    Stub implementation for face embedding inference.
+    RetinaFace + ArcFace implementation for face detection and embedding.
 
-    This class provides a placeholder implementation that generates random
-    512-dimensional face embeddings. Replace with actual model inference in production.
+    Uses InsightFace's FaceAnalysis which includes:
+    - RetinaFace for face detection
+    - Automatic face alignment using landmarks
+    - ArcFace for 512-dimensional face embeddings
     """
 
-    def __init__(self, embedding_dim: int = 512, input_size: tuple[int, int] = (112, 112)):
+    def __init__(
+        self,
+        det_size: tuple[int, int] = (640, 640),
+        providers: Optional[list[str]] = None,
+    ):
         """
-        Initialize face embedding inference.
+        Initialize InsightFace face analysis pipeline.
 
         Args:
-            embedding_dim: Dimension of output embeddings (default 512)
-            input_size: Expected input size as (width, height) (default 112x112 for faces)
+            det_size: Detection size (width, height) for face detector
+            providers: ONNX Runtime providers (e.g., ['CUDAExecutionProvider', 'CPUExecutionProvider'])
         """
-        self._embedding_dim = embedding_dim
-        self._input_size = input_size
+        self.det_size = det_size
+        self.providers = providers or ['CPUExecutionProvider']
+
+        print(f"Loading InsightFace (RetinaFace + ArcFace) with providers: {self.providers}...")
+
+        # Initialize FaceAnalysis (includes detection + embedding)
+        self.app = FaceAnalysis(providers=self.providers)
+        self.app.prepare(ctx_id=0, det_size=det_size)
+
+        self._input_size = (112, 112)  # Standard face crop size
+
+        print(f"✓ InsightFace loaded successfully")
 
     @property
     def input_size(self) -> tuple[int, int]:
         """
-        Returns the expected input size (width, height) for the model.
+        Returns the expected input size (width, height) for face crops.
 
         Returns:
-            Tuple of (width, height)
+            Tuple of (112, 112) - standard face size
         """
         return self._input_size
 
     def infer(self, buffer: np.ndarray, label: str) -> Optional[np.ndarray]:
         """
-        Process a single pre-processed face buffer and return its embedding.
+        Detect faces and extract embedding from the first/largest face.
 
         Args:
-            buffer: The pre-processed face crop data as a NumPy array
-            label: The label of the data (for logging, e.g., "face_0")
+            buffer: Image as numpy array (H, W, 3) in RGB or BGR format
+            label: Label for logging
 
         Returns:
-            A 512-d numpy array representing the face embedding, or None if it cannot be computed
+            512-d normalized face embedding, or None if no face detected
         """
-        # Stub: Generate random face embedding
-        # TODO: Replace with actual face recognition model inference
-        # Example: return self.face_model.predict(buffer)
-
         if buffer is None or buffer.size == 0:
             return None
 
-        # Generate random 512-d face embedding (stub)
-        embedding = np.random.randn(self._embedding_dim).astype(np.float32)
+        try:
+            # Ensure correct format (InsightFace expects BGR)
+            if buffer.shape[2] == 3:
+                # Convert RGB to BGR if needed (InsightFace uses OpenCV convention)
+                image_bgr = buffer[:, :, ::-1] if buffer.dtype == np.uint8 else buffer
 
-        # Normalize embedding (common in face recognition)
-        embedding = embedding / np.linalg.norm(embedding)
+            # Detect faces and get embeddings
+            faces = self.app.get(image_bgr)
 
-        return embedding
+            if not faces:
+                return None  # No face detected
+
+            # Get embedding from first face (faces are sorted by bbox area, largest first)
+            embedding = faces[0].embedding
+
+            # Already normalized by InsightFace (L2 norm = 1.0)
+            return embedding.astype(np.float32)
+
+        except Exception as e:
+            print(f"Error processing {label}: {e}")
+            return None
 
     def infer_batch(self, buffers: Dict[str, np.ndarray]) -> Dict[str, Optional[np.ndarray]]:
         """
-        Process a dictionary of pre-processed face buffers and return their embeddings.
+        Process multiple images and extract face embeddings.
+
+        Note: InsightFace doesn't have native batch processing,
+        so we process images individually.
 
         Args:
-            buffers: A dictionary where keys are string labels (e.g., "face_0", "face_1")
-                     and values are pre-processed face crop data as NumPy arrays
+            buffers: Dictionary mapping labels to image arrays
 
         Returns:
-            A dictionary mapping each label to its computed 512-d face embedding, or None
+            Dictionary mapping labels to 512-d face embeddings or None
         """
-        # Stub: Process each face individually
-        # TODO: Replace with batched model inference for better performance
-        # Example: return self.face_model.predict_batch(list(buffers.values()))
-
         results = {}
         for label, buffer in buffers.items():
             results[label] = self.infer(buffer, label)
-
         return results
+
+    def get_all_faces(self, buffer: np.ndarray) -> list[dict]:
+        """
+        Detect all faces in an image and return embeddings with metadata.
+
+        Args:
+            buffer: Image as numpy array (H, W, 3)
+
+        Returns:
+            List of dicts with 'embedding', 'bbox', 'landmarks', 'confidence'
+        """
+        if buffer is None or buffer.size == 0:
+            return []
+
+        try:
+            # Convert to BGR
+            image_bgr = buffer[:, :, ::-1] if buffer.dtype == np.uint8 else buffer
+
+            # Detect all faces
+            faces = self.app.get(image_bgr)
+
+            results = []
+            for idx, face in enumerate(faces):
+                # Convert bbox from [x1, y1, x2, y2] to {x, y, width, height}
+                x1, y1, x2, y2 = face.bbox
+                bbox = {
+                    "x": float(x1),
+                    "y": float(y1),
+                    "width": float(x2 - x1),
+                    "height": float(y2 - y1),
+                }
+
+                results.append({
+                    "face_index": idx,
+                    "embedding": face.embedding.astype(np.float32),
+                    "embedding_dimension": 512,
+                    "bbox": bbox,
+                    "landmarks": face.kps.tolist(),  # 5 facial landmarks
+                    "confidence": float(face.det_score),
+                })
+
+            return results
+
+        except Exception as e:
+            print(f"Error detecting faces: {e}")
+            return []
 
 
 __all__ = ["FaceEmbeddingInference"]
 
 
 if __name__ == "__main__":
-    """Demo usage of FaceEmbeddingInference."""
+    """Demo usage of InsightFace FaceEmbeddingInference."""
     print("\n" + "=" * 60)
-    print("FACE EMBEDDING INFERENCE DEMO")
+    print("INSIGHTFACE (RetinaFace + ArcFace) DEMO")
     print("=" * 60)
 
     # Initialize inference engine
-    inference = FaceEmbeddingInference(embedding_dim=512, input_size=(112, 112))
+    inference = FaceEmbeddingInference(det_size=(640, 640))
 
-    print(f"\nInput size: {inference.input_size}")
+    print(f"\nDetection size: {inference.det_size}")
+    print(f"Providers: {inference.providers}")
+    print(f"Face crop size: {inference.input_size}")
     print(f"Embedding dimension: 512")
 
-    # Single inference
+    # Create a dummy face image (random for demo)
     print("\n1. Single face inference...")
-    dummy_face = np.random.randn(112, 112, 3).astype(np.float32)
-    embedding = inference.infer(dummy_face, label="face_0")
+    dummy_image = (np.random.rand(480, 640, 3) * 255).astype(np.uint8)
+    embedding = inference.infer(dummy_image, label="test_face_1")
 
     if embedding is not None:
         print(f"   Generated embedding shape: {embedding.shape}")
         print(f"   Embedding dtype: {embedding.dtype}")
         print(f"   Embedding norm: {np.linalg.norm(embedding):.4f} (should be ~1.0)")
         print(f"   Sample values: {embedding[:5]}")
+    else:
+        print("   No face detected (expected with random image)")
 
     # Batch inference
-    print("\n2. Batch inference (multiple faces)...")
-    buffers = {f"face_{i}": np.random.randn(112, 112, 3).astype(np.float32) for i in range(5)}
+    print("\n2. Batch inference...")
+    buffers = {
+        f"face_{i}": (np.random.rand(480, 640, 3) * 255).astype(np.uint8) for i in range(3)
+    }
 
     embeddings = inference.infer_batch(buffers)
 
-    print(f"   Processed {len(embeddings)} faces")
+    print(f"   Processed {len(embeddings)} images")
+    detected = sum(1 for emb in embeddings.values() if emb is not None)
+    print(f"   Faces detected: {detected}/{len(embeddings)}")
+
     for label, emb in embeddings.items():
         if emb is not None:
             norm = np.linalg.norm(emb)
-            print(f"   {label}: shape={emb.shape}, dtype={emb.dtype}, norm={norm:.4f}")
+            print(f"   {label}: shape={emb.shape}, norm={norm:.4f}")
 
-    # Demonstrate similarity computation
-    print("\n3. Computing face similarity...")
-    if len(embeddings) >= 2:
-        labels = list(embeddings.keys())
-        emb1 = embeddings[labels[0]]
-        emb2 = embeddings[labels[1]]
+    # Demonstrate all faces detection
+    print("\n3. Detecting all faces in image...")
+    all_faces = inference.get_all_faces(dummy_image)
+    print(f"   Total faces detected: {len(all_faces)}")
 
-        if emb1 is not None and emb2 is not None:
-            # Cosine similarity (dot product of normalized vectors)
-            similarity = np.dot(emb1, emb2)
-            print(f"   Similarity between {labels[0]} and {labels[1]}: {similarity:.4f}")
-            print(f"   (Range: -1 to 1, higher = more similar)")
+    for face in all_faces:
+        print(f"   Face {face['face_index']}:")
+        print(f"     BBox: {face['bbox']}")
+        print(f"     Confidence: {face['confidence']:.4f}")
+        print(f"     Embedding shape: {face['embedding'].shape}")
 
     print("\n" + "=" * 60)
     print("✅ Demo completed!")
     print("=" * 60)
-    print("\nNOTE: This is a stub implementation using random embeddings.")
-    print("Replace with actual face recognition model (e.g., ArcFace, FaceNet) in production.")
+    print("\nNOTE: Using production RetinaFace + ArcFace from InsightFace.")
+    print("For real face images, detection and embedding will work properly.")

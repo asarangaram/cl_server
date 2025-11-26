@@ -1,35 +1,36 @@
-"""FastAPI application initialization."""
+"""AI Inference Microservice."""
+
+from __future__ import annotations
+
+import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .database import engine, init_db
+from .models import Base
+from .qdrant_manager import QdrantManager
+from .routes import router
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Create FastAPI app
 app = FastAPI(
     title="AI Inference Microservice",
-    description="Asynchronous AI inference service for image processing",
+    description="Asynchronous inference service for image and face processing",
     version="0.1.0",
 )
 
-# CORS middleware
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
-@app.get("/")
-async def root():
-    """Root endpoint."""
-    return {
-        "service": "AI Inference Microservice",
-        "version": "0.1.0",
-        "status": "running",
-    }
-
-
-# Import and include routers
 from .routes import router
 
 app.include_router(router)

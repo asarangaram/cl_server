@@ -7,3 +7,6 @@ use ../data/vector_store/qdrant as the persistent storage for qdrant.
 add a read me, how to start the qdrant container.
 
 The vector store client will be used by the inference service to store embeddings and metadata.
+
+
+we shall have a wrapper service that handles vector_store.

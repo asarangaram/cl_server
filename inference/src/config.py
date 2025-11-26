@@ -17,8 +17,11 @@ PUBLIC_KEY_PATH = os.getenv("PUBLIC_KEY_PATH", f"{DATABASE_DIR}/public_key.pem")
 AUTH_DISABLED = os.getenv("AUTH_DISABLED", "false").lower() in ("true", "1", "yes")
 
 # Worker configuration
-WORKER_POLL_INTERVAL = int(os.getenv("WORKER_POLL_INTERVAL", "1"))
+WORKER_POLL_INTERVAL = int(os.getenv("WORKER_POLL_INTERVAL", "5"))  # seconds
 WORKER_MAX_RETRIES = int(os.getenv("WORKER_MAX_RETRIES", "3"))
+
+# Vector store configuration
+QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 
 # Broadcasting configuration
 BROADCAST_TYPE = os.getenv("BROADCAST_TYPE", "sse")  # sse, mqtt, or none

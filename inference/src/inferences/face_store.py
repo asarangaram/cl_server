@@ -80,17 +80,17 @@ class QdrantFaceStore(StoreInterface):
                     )
                 raise ValueError("Collection config mismatch.")
 
-    def add_vector(self, point_id: str, vec_f32: np.ndarray, payload: Optional[dict] = None):
+    def add_vector(self, point_id, vec_f32: np.ndarray, payload: Optional[dict] = None):
         """
         Add or update a single face vector to Qdrant.
 
         Args:
-            point_id: Unique identifier (typically job_id-face_index)
+            point_id: Unique identifier (int or str, typically media_store_id*1000+face_index)
             vec_f32: Vector as numpy array (float32)
             payload: Optional metadata dict (job_id, media_store_id, face_index, bbox, etc.)
         """
         point = PointStruct(
-            id=point_id,
+            id=point_id,  # Qdrant accepts both int and str
             vector=vec_f32.tolist() if isinstance(vec_f32, np.ndarray) else vec_f32,
             payload=payload or {},
         )
@@ -99,28 +99,29 @@ class QdrantFaceStore(StoreInterface):
         if self.logger:
             self.logger.debug(f"Upserted face embedding: {point_id}")
 
-    def get_vector(self, point_id: str):
+    def get_vector(self, point_id):
         """
         Retrieve a point from Qdrant using the point ID.
 
         Args:
-            point_id: Unique identifier (job_id-face_index)
+            point_id: Unique identifier (int or str)
 
         Returns:
             List of retrieved points
         """
         return self.client.retrieve(collection_name=self.collection_name, ids=[point_id])
 
-    def delete_vector(self, point_id: str):
+    def delete_vector(self, point_id):
         """
         Delete a point based on its ID.
 
         Args:
-            point_id: Unique identifier
+            point_id: Unique identifier (int or str)
         """
         self.client.delete(collection_name=self.collection_name, points_selector={"points": [point_id]})
         if self.logger:
             self.logger.debug(f"Deleted face embedding: {point_id}")
+
 
     def delete_by_job_id(self, job_id: str):
         """
