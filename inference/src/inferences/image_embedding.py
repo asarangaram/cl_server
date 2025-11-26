@@ -78,7 +78,12 @@ class ImageEmbeddingInference(MLInference):
                 image = buffer
 
             # Process image
-            inputs = self.processor(images=image, return_tensors="pt").to(self.device)
+            # Manually resize to avoid processor issues
+            if isinstance(image, Image.Image):
+                image = image.resize((224, 224), Image.Resampling.LANCZOS)
+
+            # Wrap in list to ensure consistent batch processing
+            inputs = self.processor(images=[image], return_tensors="pt", padding=True).to(self.device)
 
             # Generate embedding
             with torch.no_grad():

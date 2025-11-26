@@ -9,11 +9,20 @@ import time
 os.environ["MEDIA_STORE_STUB"] = "true"
 os.environ["BROADCAST_TYPE"] = "mqtt"
 
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
 import paho.mqtt.client as mqtt
 
 from src.database import SessionLocal
 from src.job_service import JobService
 from src.worker import Worker
+from src.config import BROADCAST_TYPE
+from src.broadcaster import get_broadcaster
+
+print(f"DEBUG: BROADCAST_TYPE from config = {BROADCAST_TYPE}")
+broadcaster = get_broadcaster()
+print(f"DEBUG: Broadcaster enabled = {broadcaster.enabled}")
 
 # MQTT setup
 mqtt_received = asyncio.Event()

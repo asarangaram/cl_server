@@ -24,7 +24,7 @@ WORKER_MAX_RETRIES = int(os.getenv("WORKER_MAX_RETRIES", "3"))
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 
 # Broadcasting configuration
-BROADCAST_TYPE = os.getenv("BROADCAST_TYPE", "sse")  # sse, mqtt, or none
+BROADCAST_TYPE = os.getenv("BROADCAST_TYPE", "mqtt")  # mqtt, sse, or none
 MQTT_BROKER = os.getenv("MQTT_BROKER", "localhost")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 MQTT_TOPIC = os.getenv("MQTT_TOPIC", "inference/events")

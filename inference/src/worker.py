@@ -169,10 +169,7 @@ class Worker:
 
             # Fetch image from media_store
             logger.info(f"Fetching image for job {job_id} from media_store")
-            image_data = await self.media_store_client.fetch_image(media_store_id)
-
-            # Convert to PIL Image
-            image = Image.open(image_data)
+            image = await self.media_store_client.fetch_image(media_store_id)
 
             # Run inference based on task type
             if task_type == "image_embedding":

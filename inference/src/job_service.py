@@ -12,10 +12,10 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from .config import STORAGE_DIR
-from .models import Job, MediaStoreSyncStatus
+from .models import Job, MediaStoreSyncStatus, QueueEntry
 from .queue import Queue
 from .schemas import JobResponse
-
+import logging
 
 class JobService:
     """Service for managing inference jobs."""
