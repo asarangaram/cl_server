@@ -12,6 +12,7 @@ from cl_ml_tools import VectorCore
 from PIL import Image
 from sqlalchemy.orm import Session
 
+from .broadcaster import get_broadcaster
 from .config import QDRANT_URL, WORKER_MAX_RETRIES, WORKER_POLL_INTERVAL
 from .database import SessionLocal
 from .inferences import (
@@ -159,31 +160,43 @@ class Worker:
                 logger.error(f"Job {job_id} not found")
                 return
 
+            # Cache job attributes before session commits (to avoid detachment)
+            media_store_id = job.media_store_id
+            task_type = job.task_type
+
             # Update status to processing
             service.update_job_status(job_id, "processing")
 
             # Fetch image from media_store
             logger.info(f"Fetching image for job {job_id} from media_store")
-            image_data = await self.media_store_client.fetch_image(job.media_store_id)
+            image_data = await self.media_store_client.fetch_image(media_store_id)
 
             # Convert to PIL Image
             image = Image.open(image_data)
 
             # Run inference based on task type
-            if job.task_type == "image_embedding":
-                result = await self.process_image_embedding(job_id, job.media_store_id, image)
-            elif job.task_type == "face_detection":
+            if task_type == "image_embedding":
+                result = await self.process_image_embedding(job_id, media_store_id, image)
+            elif task_type == "face_detection":
                 result = await self.process_face_detection(job_id, image)
                 # Upload face detection results to media_store
-                await self.upload_results_with_retry(job.media_store_id, result, db, job_id)
-            elif job.task_type == "face_embedding":
-                result = await self.process_face_embedding(job_id, job.media_store_id, image)
+                await self.upload_results_with_retry(media_store_id, result, db, job_id)
+            elif task_type == "face_embedding":
+                result = await self.process_face_embedding(job_id, media_store_id, image)
             else:
-                raise ValueError(f"Unknown task type: {job.task_type}")
+                raise ValueError(f"Unknown task type: {task_type}")
 
             # Update job status to completed
             service.update_job_status(job_id, "completed", result=result)
 
+            # Broadcast completion event
+            get_broadcaster().publish("job_completed", {
+                "job_id": job_id,
+                "task_type": task_type,
+                "media_store_id": media_store_id,
+                "status": "completed",
+                "result": result
+            })
 
             logger.info(f"Job {job_id} completed successfully")
 
@@ -205,6 +218,15 @@ class Worker:
             else:
                 # Max retries reached
                 service.update_job_status(job_id, "error", error_message=str(e))
+                
+                # Broadcast failure event
+                get_broadcaster().publish("job_failed", {
+                    "job_id": job_id,
+                    "task_type": job.task_type if job else "unknown",
+                    "status": "error",
+                    "error": str(e)
+                })
+                
                 logger.error(f"Job {job_id} failed after {WORKER_MAX_RETRIES} retries")
 
     async def process_image_embedding(self, job_id: str, media_store_id: str, image: Image.Image) -> dict:
