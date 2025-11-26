@@ -1,0 +1,35 @@
+*.pyc
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Database
+*.db
+*.db-journal
+
+# Data directory
+data/
+
+# Alembic
+*.pyc
+
+# Distribution
+dist/
+build/
+*.egg-info/
