@@ -393,3 +393,38 @@ async def update_read_auth_config(
         "read_auth_enabled": config.enabled,
         "message": "Configuration updated successfully"
     }
+
+
+@router.post(
+    "/entity/{entity_id}/face-detection-results",
+    tags=["inference"],
+    summary="Accept Face Detection Results",
+    description="Stub endpoint to accept face detection results from inference service. Data is accepted but not stored.",
+    status_code=status.HTTP_200_OK,
+)
+async def accept_face_detection_results(
+    entity_id: int = Path(..., title="Entity ID"),
+    results: dict = Body(..., title="Face Detection Results"),
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    Stub endpoint to accept face detection results from the inference service.
+
+    This is a placeholder implementation that accepts the face detection data
+    but does not store it. In future, this can be enhanced to store face
+    detection results in the media store.
+
+    Args:
+        entity_id: The ID of the media entity
+        results: Face detection results including faces, face_count, etc.
+
+    Returns:
+        Confirmation message
+    """
+    # Stub: accept and ignore the data
+    # In future, store results in media_store
+    return {
+        "status": "accepted",
+        "entity_id": entity_id,
+        "message": "Face detection results received and stored"
+    }

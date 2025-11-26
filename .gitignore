@@ -52,3 +52,4 @@ media_files/**
 media_store/test_media_files/**
 test_artifacts/** 
 data/**
+demos/images/**
