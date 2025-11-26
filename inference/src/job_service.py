@@ -116,7 +116,7 @@ class JobService:
 
         # Get priority from queue if still pending
         priority = 5  # default
-        queue_entry = self.db.query(Queue).filter_by(job_id=job_id).first()
+        queue_entry = self.db.query(QueueEntry).filter_by(job_id=job_id).first()
         if queue_entry:
             priority = queue_entry.priority
 
@@ -201,25 +201,29 @@ class JobService:
         Returns:
             JobResponse
         """
-        result = None
-        if job.result:
-            try:
-                result = json.loads(job.result)
-            except json.JSONDecodeError:
-                result = None
+        try:
+            result = None
+            if job.result:
+                try:
+                    result = json.loads(job.result)
+                except json.JSONDecodeError:
+                    result = None
 
-        return JobResponse(
-            job_id=job.job_id,
-            task_type=job.task_type,
-            media_store_id=job.media_store_id,
-            status=job.status,
-            priority=priority,
-            created_at=job.created_at,
-            started_at=job.started_at,
-            completed_at=job.completed_at,
-            error_message=job.error_message,
-            result=result,
-        )
+            return JobResponse(
+                job_id=job.job_id,
+                task_type=job.task_type,
+                media_store_id=job.media_store_id,
+                status=job.status,
+                priority=priority,
+                created_at=job.created_at,
+                started_at=job.started_at,
+                completed_at=job.completed_at,
+                error_message=job.error_message,
+                result=result,
+            )
+        except Exception as e:
+            logging.getLogger(__name__).error(f"Error converting job to response: {e}")
+            raise
 
 
 __all__ = ["JobService"]

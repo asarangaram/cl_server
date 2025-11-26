@@ -54,14 +54,14 @@ class FaceEmbeddingInference(MLInference):
 
     def infer(self, buffer: np.ndarray, label: str) -> Optional[np.ndarray]:
         """
-        Detect faces and extract embedding from the first/largest face.
+        Extract embedding from a cropped face image.
 
         Args:
             buffer: Image as numpy array (H, W, 3) in RGB or BGR format
             label: Label for logging
 
         Returns:
-            512-d normalized face embedding, or None if no face detected
+            512-d normalized face embedding, or None if validation fails
         """
         if buffer is None or buffer.size == 0:
             return None
@@ -72,13 +72,21 @@ class FaceEmbeddingInference(MLInference):
                 # Convert RGB to BGR if needed (InsightFace uses OpenCV convention)
                 image_bgr = buffer[:, :, ::-1] if buffer.dtype == np.uint8 else buffer
 
-            # Detect faces and get embeddings
+            # Detect faces
             faces = self.app.get(image_bgr)
 
+            # Validation: Must have exactly one face
             if not faces:
-                return None  # No face detected
+                print(f"Validation failed for {label}: No face detected")
+                return None
+            
+            if len(faces) > 1:
+                print(f"Validation failed for {label}: Multiple faces detected ({len(faces)})")
+                return None
 
-            # Get embedding from first face (faces are sorted by bbox area, largest first)
+            # Get embedding from the single face
+            # Note: We assume input is already a crop, so we don't crop again.
+            # InsightFace's app.get() performs alignment and embedding on the detected face.
             embedding = faces[0].embedding
 
             # Already normalized by InsightFace (L2 norm = 1.0)
@@ -87,6 +95,7 @@ class FaceEmbeddingInference(MLInference):
         except Exception as e:
             print(f"Error processing {label}: {e}")
             return None
+
 
     def infer_batch(self, buffers: Dict[str, np.ndarray]) -> Dict[str, Optional[np.ndarray]]:
         """

@@ -53,8 +53,9 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) 
         return {
             "sub": "demo_user",
             "permissions": ["ai_inference_support"],
-            "is_admin": False,
+            "is_admin": True,
         }
+
 
     if PUBLIC_KEY is None:
         raise HTTPException(

@@ -35,10 +35,12 @@ class QdrantManager:
             True if Qdrant is accessible, False otherwise
         """
         try:
-            response = httpx.get(f"{self.qdrant_url}/health", timeout=2.0)
+            # Qdrant uses /readyz for health checks
+            response = httpx.get(f"{self.qdrant_url}/readyz", timeout=2.0)
             return response.status_code == 200
         except Exception:
             return False
+
 
     def start(self) -> bool:
         """

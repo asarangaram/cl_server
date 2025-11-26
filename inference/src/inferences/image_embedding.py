@@ -33,8 +33,10 @@ class ImageEmbeddingInference(MLInference):
         self.model_name = model_name
 
         print(f"Loading CLIP model: {model_name} on {self.device}...")
-        self.model = CLIPModel.from_pretrained(model_name).to(self.device)
-        self.processor = CLIPProcessor.from_pretrained(model_name)
+        # Use safetensors to avoid torch.load security issues
+        self.model = CLIPModel.from_pretrained(model_name, use_safetensors=True).to(self.device)
+        self.processor = CLIPProcessor.from_pretrained(model_name, use_safetensors=True)
+
 
         self.model.eval()  # Set to evaluation mode
         self._input_size = (224, 224)
