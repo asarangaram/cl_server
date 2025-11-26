@@ -9,10 +9,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from src.database import Base, get_db
-from src.models import User, UserPermission
-from src.auth_utils import get_password_hash
-from main import app
+from services.authentication.src.database import Base, get_db
+from services.authentication.src.models import User, UserPermission
+from services.authentication.src.auth_utils import get_password_hash
+from services.authentication.main import app
 
 # Use in-memory SQLite for testing
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"

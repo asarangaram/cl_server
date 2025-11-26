@@ -6,10 +6,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from src.database import Base, get_db
-from src.models import ServiceConfig
-from src.config_service import ConfigService
-from main import app
+from services.media_store.src.database import Base, get_db
+from services.media_store.src.models import ServiceConfig
+from services.media_store.src.config_service import ConfigService
+from services.media_store.main import app
 
 
 from sqlalchemy.pool import StaticPool

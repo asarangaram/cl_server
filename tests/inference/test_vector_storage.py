@@ -15,7 +15,7 @@ from PIL import Image
 sys.modules['cl_ml_tools'] = MagicMock()
 
 # Test actual worker implementation
-from src.job_service import JobService
+from services.inference.src.job_service import JobService
 
 
 class TestImageEmbeddingStorageFromWorker:

@@ -1,4 +1,4 @@
-from src import auth_utils
+from services.authentication.src import auth_utils
 
 def test_login_success(client, regular_user):
     response = client.post(
@@ -27,7 +27,7 @@ def test_get_public_key(client):
 
 def test_token_contains_permissions(client, db_session, regular_user):
     # Add permission to user
-    from src.models import UserPermission
+    from services.authentication.src.models import UserPermission
     perm = UserPermission(user_id=regular_user.id, permission="read")
     db_session.add(perm)
     db_session.commit()

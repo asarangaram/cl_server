@@ -30,7 +30,7 @@ def test_engine():
     )
 
     # Import models and create tables
-    from src.models import Base
+    from services.inference.src.models import Base
 
     Base.metadata.create_all(bind=engine)
 
@@ -106,10 +106,10 @@ def client(test_engine, mock_broadcaster):
         return MagicMock(credentials="test_token")
 
     # Import app and dependencies
-    from src import app
-    from src.database import get_db
-    from src.broadcaster import get_broadcaster
-    import src.auth as auth
+    from services.inference.src import app
+    from services.inference.src.database import get_db
+    from services.inference.src.broadcaster import get_broadcaster
+    import services.inference.src.auth as auth
 
     # Override dependencies
     app.dependency_overrides[get_db] = override_get_db
@@ -145,10 +145,10 @@ def auth_client(test_engine, mock_broadcaster):
         return MagicMock(credentials="test_token")
 
     # Import app and dependencies
-    from src import app
-    from src.database import get_db
-    from src.broadcaster import get_broadcaster
-    import src.auth as auth
+    from services.inference.src import app
+    from services.inference.src.database import get_db
+    from services.inference.src.broadcaster import get_broadcaster
+    import services.inference.src.auth as auth
 
     # Override database and broadcaster
     app.dependency_overrides[get_db] = override_get_db
