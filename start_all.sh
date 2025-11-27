@@ -1,20 +1,26 @@
 #!/bin/bash
 
 ################################################################################
-#                     CoLAN Server - Start All Services Script
+#                     CL Server - Start All Services
 ################################################################################
 #
-# This script starts all three microservices with proper environment setup.
-# Each service is started in its own background process.
+# This script starts all three microservices by calling their individual
+# start scripts. Each service is started in its own background process.
 #
 # Usage:
 #   ./start_all.sh              # Start all services with AUTH_DISABLED=true
 #   ./start_all.sh --with-auth  # Start with authentication enabled
 #
+# Environment Variables (Required):
+#   CL_VENV_DIR - Path to directory containing virtual environments
+#   CL_SERVER_DIR - Path to data directory
+#
 # Services started:
 #   - Authentication Service on port 8000
 #   - Media Store Service on port 8001
 #   - Inference Service on port 8002
+#
+# Logs are stored in: $CL_SERVER_DIR/run_logs/
 #
 ################################################################################
 
@@ -30,21 +36,22 @@ NC='\033[0m' # No Color
 # Script configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$SCRIPT_DIR"
-AUTH_DISABLED="true"
 SERVICES_STARTED=0
+SERVICES_FAILED=0
+AUTH_FLAG=""
 
 # Parse command line arguments
 if [[ "$1" == "--with-auth" ]]; then
-    AUTH_DISABLED="false"
-    echo -e "${BLUE}Starting services WITH authentication enabled${NC}"
+    AUTH_FLAG="--with-auth"
+    echo -e "${BLUE}Starting all services WITH authentication enabled${NC}"
 else
-    echo -e "${BLUE}Starting services with AUTH_DISABLED=true (no authentication required)${NC}"
+    echo -e "${BLUE}Starting all services with AUTH_DISABLED=true (no authentication required)${NC}"
 fi
 
 echo ""
 
 ################################################################################
-# Validate CL_SERVER_DIR environment variable
+# Validate CL_SERVER_DIR
 ################################################################################
 
 if [ -z "$CL_SERVER_DIR" ]; then
@@ -60,139 +67,134 @@ if [ ! -w "$CL_SERVER_DIR" ]; then
 fi
 
 echo -e "${GREEN}[✓] CL_SERVER_DIR is set and writable: $CL_SERVER_DIR${NC}"
+
 echo ""
 
 ################################################################################
-# Function to check if port is in use
+# Validate CL_VENV_DIR
 ################################################################################
-check_port() {
-    local port=$1
-    if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1 ; then
-        return 0  # Port is in use
-    else
-        return 1  # Port is free
-    fi
-}
 
-################################################################################
-# Function to run database migrations
-################################################################################
-run_migrations() {
-    local service_name=$1
-    local service_path=$2
+if [ -z "$CL_VENV_DIR" ]; then
+    echo -e "${RED}[✗] Error: CL_VENV_DIR environment variable must be set${NC}"
+    echo -e "${YELLOW}    Example: export CL_VENV_DIR=/path/to/venv${NC}"
+    exit 1
+fi
 
-    echo -e "${BLUE}[*] Running database migrations for ${service_name}...${NC}"
+if [ ! -w "$(dirname "$CL_VENV_DIR")" ]; then
+    echo -e "${RED}[✗] Error: No write permission for parent of CL_VENV_DIR: $CL_VENV_DIR${NC}"
+    exit 1
+fi
 
-    cd "$PROJECT_ROOT/$service_path"
+echo -e "${GREEN}[✓] CL_VENV_DIR is set and writable: $CL_VENV_DIR${NC}"
 
-    # Check if venv exists
-    if [ ! -d "venv" ]; then
-        python -m venv venv
-        source venv/bin/activate
-        pip install -q -e . 2>/dev/null || true
-    else
-        source venv/bin/activate
-    fi
-
-    # Run migrations if alembic.ini exists
-    if [ -f "alembic.ini" ]; then
-        if CL_SERVER_DIR="$CL_SERVER_DIR" alembic upgrade head > /dev/null 2>&1; then
-            echo -e "${GREEN}    ✓ Migrations completed${NC}"
-        else
-            echo -e "${YELLOW}    ⚠ Migration warning (may not be critical)${NC}"
-        fi
-    fi
-}
+echo ""
 
 ################################################################################
-# Function to start a service
+# Create logs directory
 ################################################################################
-start_service() {
-    local service_name=$1
-    local service_path=$2
-    local port=$3
-    local auth_flag=$4
 
-    echo -e "${BLUE}[*] Starting ${service_name}...${NC}"
+LOGS_DIR="$CL_SERVER_DIR/run_logs"
 
-    # Check if port is already in use
-    if check_port $port; then
-        echo -e "${RED}[✗] Error: Port $port is already in use${NC}"
-        echo -e "${YELLOW}    To kill the process: lsof -ti:$port | xargs kill -9${NC}"
-        return 1
+if [ ! -d "$LOGS_DIR" ]; then
+    echo -e "${BLUE}[*] Creating logs directory: $LOGS_DIR${NC}"
+    if ! mkdir -p "$LOGS_DIR" 2>/dev/null; then
+        echo -e "${RED}[✗] Failed to create logs directory${NC}"
+        exit 1
     fi
+    echo -e "${GREEN}[✓] Logs directory created${NC}"
+fi
 
-    # Navigate to service directory
-    cd "$PROJECT_ROOT/$service_path"
-
-    # Check if venv exists
-    if [ ! -d "venv" ]; then
-        echo -e "${YELLOW}[!] Virtual environment not found. Creating...${NC}"
-        python -m venv venv
-        source venv/bin/activate
-        pip install -q -e . 2>/dev/null || true
-    else
-        source venv/bin/activate
-    fi
-
-    # Start the service in background
-    if [ "$auth_flag" == "true" ]; then
-        CL_SERVER_DIR="$CL_SERVER_DIR" AUTH_DISABLED=true python main.py > "${PROJECT_ROOT}/.${service_name}.log" 2>&1 &
-    else
-        CL_SERVER_DIR="$CL_SERVER_DIR" python main.py > "${PROJECT_ROOT}/.${service_name}.log" 2>&1 &
-    fi
-
-    local pid=$!
-    sleep 2
-
-    # Check if process is still running
-    if ! kill -0 $pid 2>/dev/null; then
-        echo -e "${RED}[✗] Failed to start ${service_name}${NC}"
-        echo -e "${YELLOW}    Check log: tail -f ${PROJECT_ROOT}/.${service_name}.log${NC}"
-        return 1
-    fi
-
-    echo -e "${GREEN}[✓] ${service_name} started (PID: $pid, Port: $port)${NC}"
-    echo "    Log file: ${PROJECT_ROOT}/.${service_name}.log"
-    SERVICES_STARTED=$((SERVICES_STARTED + 1))
-    return 0
-}
+echo ""
 
 ################################################################################
 # Start all services
 ################################################################################
 
-echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
-echo -e "${BLUE}                    Starting All Services${NC}"
-echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+print_header() {
+    local title=$1
+    echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+    echo -e "${BLUE}                    ${title}${NC}"
+    echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
+    echo ""
+}
+
+print_header "Starting All Services"
+
+echo "Starting services in background..."
+echo "Logs directory: $LOGS_DIR"
 echo ""
 
-# Start Authentication Service
-start_service "Authentication" "services/authentication" "8000" "$AUTH_DISABLED"
+################################################################################
+# Function to start a service in background (for orchestration)
+################################################################################
+start_service_background() {
+    local service_name=$1
+    local service_script=$2
+
+    echo -e "${BLUE}[*] $service_name${NC}"
+
+    # Run the service script in background, redirecting output to log file
+    # The script itself runs the service in foreground, so we wrap it in background
+    # Pass environment variables to the service script
+    ( export CL_VENV_DIR="$CL_VENV_DIR"; export CL_SERVER_DIR="$CL_SERVER_DIR"; bash "$service_script" $AUTH_FLAG > "$LOGS_DIR/${service_name}.log" 2>&1 ) &
+
+    # Store the PID
+    local pid=$!
+    PIDS+=($pid)
+    SERVICES_STARTED=$((SERVICES_STARTED + 1))
+
+    echo -e "${GREEN}     ✓ Started (PID: $pid)${NC}"
+}
+
+# Track pids for status monitoring
+PIDS=()
+
+# Start all services
+echo "Launching services..."
 echo ""
 
-# Run migrations for Media Store (required on first run)
-run_migrations "Media_Store" "services/media_store"
-echo ""
+start_service_background "Authentication" "$PROJECT_ROOT/services/authentication/start.sh"
+sleep 2
 
-# Start Media Store Service
-start_service "Media_Store" "services/media_store" "8001" "$AUTH_DISABLED"
-echo ""
+start_service_background "Media_Store" "$PROJECT_ROOT/services/media_store/start.sh"
+sleep 2
 
-# Start Inference Service
-start_service "Inference" "services/inference" "8002" "$AUTH_DISABLED"
+start_service_background "Inference" "$PROJECT_ROOT/services/inference/start.sh"
+
 echo ""
+echo "Waiting for services to fully start..."
+sleep 3
 
 ################################################################################
 # Summary
 ################################################################################
 
-echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
-echo -e "${GREEN}                    Startup Summary${NC}"
-echo -e "${BLUE}═══════════════════════════════════════════════════════════════${NC}"
-echo ""
+print_header "Startup Summary"
 
-if [ $SERVICES_STARTED -eq 3 ]; then
+# Check which services are actually running
+AUTH_PORT=8000
+MEDIA_STORE_PORT=8001
+INFERENCE_PORT=8002
+
+AUTH_RUNNING=0
+MEDIA_RUNNING=0
+INFERENCE_RUNNING=0
+
+if lsof -Pi :$AUTH_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
+    AUTH_RUNNING=1
+fi
+
+if lsof -Pi :$MEDIA_STORE_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
+    MEDIA_RUNNING=1
+fi
+
+if lsof -Pi :$INFERENCE_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
+    INFERENCE_RUNNING=1
+fi
+
+TOTAL_RUNNING=$((AUTH_RUNNING + MEDIA_RUNNING + INFERENCE_RUNNING))
+
+if [ $TOTAL_RUNNING -eq 3 ]; then
     echo -e "${GREEN}[✓] All 3 services started successfully!${NC}"
     echo ""
     echo "Services running:"
@@ -201,27 +203,54 @@ if [ $SERVICES_STARTED -eq 3 ]; then
     echo -e "  ${GREEN}✓ Inference Service${NC}          → http://127.0.0.1:8002/docs"
     echo ""
     echo "Authentication Mode:"
-    if [ "$AUTH_DISABLED" == "true" ]; then
+    if [ -z "$AUTH_FLAG" ]; then
         echo -e "  ${YELLOW}⚠ AUTH_DISABLED=true (No authentication required)${NC}"
     else
         echo -e "  ${GREEN}✓ Authentication enabled${NC}"
     fi
     echo ""
+    echo "Logs directory: $LOGS_DIR"
+    echo ""
     echo "To view logs:"
-    echo "  tail -f .Authentication.log"
-    echo "  tail -f .Media_Store.log"
-    echo "  tail -f .Inference.log"
+    echo "  tail -f $LOGS_DIR/Authentication.log"
+    echo "  tail -f $LOGS_DIR/Media_Store.log"
+    echo "  tail -f $LOGS_DIR/Inference.log"
     echo ""
     echo "To stop services:"
     echo "  ./stop_all.sh"
     echo ""
 else
-    echo -e "${RED}[✗] Only $SERVICES_STARTED/3 services started${NC}"
+    echo -e "${RED}[✗] Only $TOTAL_RUNNING/3 services started${NC}"
     echo ""
-    echo "Some services failed to start. Check the logs:"
-    echo "  tail -f .Authentication.log"
-    echo "  tail -f .Media_Store.log"
-    echo "  tail -f .Inference.log"
+    echo "Services status:"
+    if [ $AUTH_RUNNING -eq 1 ]; then
+        echo -e "  ${GREEN}✓ Authentication Service${NC}     (Port 8000)"
+    else
+        echo -e "  ${RED}✗ Authentication Service${NC}     (Port 8000)"
+    fi
+    if [ $MEDIA_RUNNING -eq 1 ]; then
+        echo -e "  ${GREEN}✓ Media Store Service${NC}        (Port 8001)"
+    else
+        echo -e "  ${RED}✗ Media Store Service${NC}        (Port 8001)"
+    fi
+    if [ $INFERENCE_RUNNING -eq 1 ]; then
+        echo -e "  ${GREEN}✓ Inference Service${NC}          (Port 8002)"
+    else
+        echo -e "  ${RED}✗ Inference Service${NC}          (Port 8002)"
+    fi
+    echo ""
+    echo "Logs directory: $LOGS_DIR"
+    echo ""
+    echo "Check logs for details:"
+    if [ $AUTH_RUNNING -eq 0 ]; then
+        echo "  tail -f $LOGS_DIR/Authentication.log"
+    fi
+    if [ $MEDIA_RUNNING -eq 0 ]; then
+        echo "  tail -f $LOGS_DIR/Media_Store.log"
+    fi
+    if [ $INFERENCE_RUNNING -eq 0 ]; then
+        echo "  tail -f $LOGS_DIR/Inference.log"
+    fi
     exit 1
 fi
 
