@@ -4,7 +4,7 @@
 #                     CL Server - Start All Services
 ################################################################################
 #
-# This script starts all three microservices by calling their individual
+# This script starts all microservices by calling their individual
 # start scripts. Each service is started in its own background process.
 #
 # Usage:
@@ -19,6 +19,7 @@
 #   - Authentication Service on port 8000
 #   - Media Store Service on port 8001
 #   - Inference Service on port 8002
+#   - Inference Worker (job processing, no dedicated port)
 #
 # Logs are stored in: $CL_SERVER_DIR/run_logs/
 #
@@ -160,6 +161,9 @@ start_service_background "Media_Store" "$PROJECT_ROOT/services/media_store/start
 sleep 2
 
 start_service_background "Inference" "$PROJECT_ROOT/services/inference/start.sh"
+sleep 1
+
+start_service_background "Inference_Worker" "$PROJECT_ROOT/services/inference/worker.sh"
 
 echo ""
 echo "Waiting for services to fully start..."
@@ -195,12 +199,13 @@ fi
 TOTAL_RUNNING=$((AUTH_RUNNING + MEDIA_RUNNING + INFERENCE_RUNNING))
 
 if [ $TOTAL_RUNNING -eq 3 ]; then
-    echo -e "${GREEN}[✓] All 3 services started successfully!${NC}"
+    echo -e "${GREEN}[✓] All services started successfully!${NC}"
     echo ""
     echo "Services running:"
     echo -e "  ${GREEN}✓ Authentication Service${NC}     → http://0.0.0.0:8000/docs"
     echo -e "  ${GREEN}✓ Media Store Service${NC}        → http://127.0.0.1:8001/docs"
     echo -e "  ${GREEN}✓ Inference Service${NC}          → http://127.0.0.1:8002/docs"
+    echo -e "  ${GREEN}✓ Inference Worker${NC}           (job processing)"
     echo ""
     echo "Authentication Mode:"
     if [ -z "$AUTH_FLAG" ]; then
@@ -215,12 +220,13 @@ if [ $TOTAL_RUNNING -eq 3 ]; then
     echo "  tail -f $LOGS_DIR/Authentication.log"
     echo "  tail -f $LOGS_DIR/Media_Store.log"
     echo "  tail -f $LOGS_DIR/Inference.log"
+    echo "  tail -f $LOGS_DIR/Inference_Worker.log"
     echo ""
     echo "To stop services:"
     echo "  ./stop_all.sh"
     echo ""
 else
-    echo -e "${RED}[✗] Only $TOTAL_RUNNING/3 services started${NC}"
+    echo -e "${RED}[✗] Only $TOTAL_RUNNING/3 services started (plus Inference Worker)${NC}"
     echo ""
     echo "Services status:"
     if [ $AUTH_RUNNING -eq 1 ]; then

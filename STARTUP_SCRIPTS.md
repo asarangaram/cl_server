@@ -82,9 +82,10 @@ cd services/media_store
 
 #### Inference Service
 **File:** `services/inference/start.sh`
-- Starts the Inference service on port 8002
+- Starts the Inference FastAPI server on port 8002
 - No database migrations needed
 - Accepts `--with-auth` flag for authentication mode
+- Runs in **foreground mode** for better container/process management
 
 **Usage:**
 ```bash
@@ -93,6 +94,23 @@ export CL_SERVER_DIR=/path/to/data
 cd services/inference
 ./start.sh
 ```
+
+#### Inference Worker
+**File:** `services/inference/worker.sh`
+- Starts the Inference Worker for processing queued jobs
+- Runs in **foreground mode** for better container/process management
+- Can be started independently in a separate terminal/container
+- Must connect to a running Inference Service
+
+**Usage:**
+```bash
+export CL_VENV_DIR=/path/to/venv
+export CL_SERVER_DIR=/path/to/data
+cd services/inference
+./worker.sh
+```
+
+**Note:** The Inference Worker must be running for jobs to be processed. Without it, jobs will queue but not execute.
 
 ## Starting Services
 
@@ -177,6 +195,7 @@ When using `start_all.sh`, all service output (startup and runtime) is captured 
 tail -f $CL_SERVER_DIR/run_logs/Authentication.log
 tail -f $CL_SERVER_DIR/run_logs/Media_Store.log
 tail -f $CL_SERVER_DIR/run_logs/Inference.log
+tail -f $CL_SERVER_DIR/run_logs/Inference_Worker.log
 
 # Follow all service logs at once
 tail -f $CL_SERVER_DIR/run_logs/*.log
@@ -253,6 +272,7 @@ lsof -ti:8002 | xargs kill -9
 pkill -f "python.*authentication.*main.py"
 pkill -f "python.*media_store.*main.py"
 pkill -f "python.*inference.*main.py"
+pkill -f "python.*src.worker"  # Kill the inference worker
 ```
 
 ## Troubleshooting
@@ -323,7 +343,8 @@ cl_server/
 │   │   └── src/
 │   └── inference/
 │       ├── common.sh              # Shared utilities (local copy)
-│       ├── start.sh               # Inference startup
+│       ├── start.sh               # Inference server startup
+│       ├── worker.sh              # Inference worker startup
 │       ├── main.py
 │       ├── pyproject.toml
 │       └── src/
@@ -337,7 +358,8 @@ cl_server/
 └── run_logs/
     ├── Authentication.log          # Authentication service output
     ├── Media_Store.log             # Media Store service output
-    └── Inference.log               # Inference service output
+    ├── Inference.log               # Inference service (server) output
+    └── Inference_Worker.log        # Inference worker process output
 ```
 
 ## Summary

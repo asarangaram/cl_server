@@ -1,24 +1,24 @@
 #!/bin/bash
 
 ################################################################################
-#                     CL Server - Start Inference Service
+#                    CL Server - Start Inference Worker
 ################################################################################
 #
-# This script starts the Inference FastAPI server.
+# This script starts the Inference Worker process for processing queued jobs.
 #
 # Usage:
-#   ./start.sh              # Start with AUTH_DISABLED=true
-#   ./start.sh --with-auth  # Start with authentication enabled
+#   ./worker.sh  # Start worker process
 #
 # Environment Variables (Required):
 #   CL_VENV_DIR - Path to directory containing virtual environments
 #   CL_SERVER_DIR - Path to data directory
 #
 # Service:
-#   - Inference Service on port 8002
+#   - Inference Worker (connects to inference service on port 8002)
 #
 # Note:
-#   To start the inference worker separately, use: ./worker.sh
+#   The inference service must be running before starting the worker.
+#   Start the service with: ./start.sh
 #
 ################################################################################
 
@@ -33,19 +33,9 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
 # Service configuration
-SERVICE_NAME="Inference"
+SERVICE_NAME="Inference Worker"
 SERVICE_PATH="services/inference"
 SERVICE_ENV_NAME="inference"
-PORT=8002
-AUTH_DISABLED="true"
-
-# Parse command line arguments
-if [[ "$1" == "--with-auth" ]]; then
-    AUTH_DISABLED="false"
-    echo -e "${BLUE}Starting Inference service WITH authentication enabled${NC}"
-else
-    echo -e "${BLUE}Starting Inference service with AUTH_DISABLED=true (no authentication required)${NC}"
-fi
 
 echo ""
 
@@ -69,32 +59,20 @@ fi
 echo ""
 
 ################################################################################
-# Start Inference Service
+# Start Inference Worker
 ################################################################################
 
-print_header "Starting Inference Service"
+print_header "Starting Inference Worker"
 
 # Setup venv
 setup_venv "$PROJECT_ROOT/$SERVICE_PATH" "$SERVICE_ENV_NAME"
 
-# Check if port is already in use
-if check_port $PORT; then
-    echo -e "${RED}[✗] Error: Port $PORT is already in use${NC}"
-    echo -e "${YELLOW}    To kill the process: lsof -ti:$PORT | xargs kill -9${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}[✓] Port $PORT is available${NC}"
-echo -e "${GREEN}[✓] Starting Inference Service on port $PORT${NC}"
+echo -e "${GREEN}[✓] Starting Inference Worker${NC}"
 echo -e "${BLUE}[*] Press Ctrl+C to stop${NC}"
 echo ""
 
 # Trap to handle shutdown
-trap 'echo -e "\n${YELLOW}[*] Inference Service stopped${NC}"; exit 0' SIGTERM SIGINT
+trap 'echo -e "\n${YELLOW}[*] Inference Worker stopped${NC}"; exit 0' SIGTERM SIGINT
 
-# Start FastAPI service in foreground
-if [ "$AUTH_DISABLED" == "true" ]; then
-    CL_SERVER_DIR="$CL_SERVER_DIR" AUTH_DISABLED=true python "$PROJECT_ROOT/$SERVICE_PATH/main.py"
-else
-    CL_SERVER_DIR="$CL_SERVER_DIR" python "$PROJECT_ROOT/$SERVICE_PATH/main.py"
-fi
+# Start Worker in foreground
+CL_SERVER_DIR="$CL_SERVER_DIR" AUTH_DISABLED=true python -m src.worker
