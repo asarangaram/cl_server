@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from services.authentication.src import models, database, routes, config, service, schemas
+from src import models, database, routes, config, service, schemas
 
 # Create tables (for development/testing without migrations)
 # In production, use Alembic
