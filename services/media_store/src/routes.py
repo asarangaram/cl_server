@@ -15,6 +15,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from .schemas import (
@@ -298,19 +299,6 @@ async def get_entity_versions(
     return versions
 
 
-
-@router.get(
-    "/",
-    tags=[],
-    summary="Root",
-    description="Returns a simple welcome string",
-    operation_id="root_get",
-    responses={200: {"description": "Welcome to CoLAN"}},
-)
-async def root():
-    return "media_store service is running"
-
-
 # Admin configuration endpoints
 @router.get(
     "/admin/config",
@@ -428,3 +416,16 @@ async def accept_face_detection_results(
         "entity_id": entity_id,
         "message": "Face detection results received and stored"
     }
+
+class RootResponse(BaseModel):
+    message: str
+
+@router.get(
+    "/",
+    summary="Root",
+    description="Returns a simple welcome string",
+    response_model=RootResponse,
+    operation_id="root_get",
+)
+async def root():
+    return RootResponse(message="media_store service is running")

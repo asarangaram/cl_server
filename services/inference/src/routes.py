@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from .auth import require_admin, require_permission
@@ -240,5 +241,18 @@ async def health_check(db: Session = Depends(get_db)):
         queue_size=queue_size,
     )
 
+class RootResponse(BaseModel):
+    message: str
+
+@router.get(
+    "/",
+    summary="Root",
+    description="Returns a simple welcome string",
+    response_model=RootResponse,
+    operation_id="root_get",
+)
+async def root():
+    return RootResponse(message="inference service is running")
 
 __all__ = ["router"]
+

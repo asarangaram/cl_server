@@ -5,6 +5,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from . import auth_utils, database, schemas, service
@@ -114,3 +115,16 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user = Depe
     if not success:
         raise HTTPException(status_code=404, detail="User not found")
     return None
+
+class RootResponse(BaseModel):
+    message: str
+
+@router.get(
+    "/",
+    summary="Root",
+    description="Returns a simple welcome string",
+    response_model=RootResponse,
+    operation_id="root_get",
+)
+async def root():
+    return RootResponse(message="authentication service is running")
