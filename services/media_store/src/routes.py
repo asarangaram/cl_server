@@ -28,7 +28,7 @@ from .schemas import (
 )
 
 from .database import get_db
-from .service import DuplicateFileError, EntityService
+from .service import EntityService
 from . import schemas
 from .auth import get_current_user_with_write_permission, get_current_user_with_read_permission
 
@@ -127,8 +127,6 @@ async def create_entity(
         return service.create_entity(body, file_bytes, filename, user_id)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except DuplicateFileError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
 
 @router.delete(
@@ -224,8 +222,6 @@ async def put_entity(
         return item
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except DuplicateFileError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
 
 
 @router.patch(
