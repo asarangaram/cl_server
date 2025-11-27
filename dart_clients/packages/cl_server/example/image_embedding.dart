@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:cl_server/cl_server.dart';
+import 'package:mqtt5_client/mqtt5_client.dart';
+import 'package:mqtt5_client/mqtt5_server_client.dart';
 
 /// Image Embedding CLI Example Application
 ///
@@ -38,13 +41,21 @@ void main(List<String> args) async {
     final username = _getArgValue(args, '--username');
     final password = _getArgValue(args, '--password');
     final imagePath = _getArgValue(args, '--image');
-    final skipMqtt = args.contains('--skip-mqtt');
+    final noMqtt = args.contains('--no-mqtt') || args.contains('--skip-mqtt');
+    final noPolling = args.contains('--no-polling');
     final pollInterval =
         int.tryParse(_getArgValue(args, '--poll-interval') ?? '2') ?? 2;
     final mqttTimeout =
         int.tryParse(_getArgValue(args, '--mqtt-timeout') ?? '30') ?? 30;
     final pollTimeout =
         int.tryParse(_getArgValue(args, '--poll-timeout') ?? '120') ?? 120;
+
+    // Validate configuration
+    if (noMqtt && noPolling) {
+      print('❌ Error: Cannot disable both MQTT and polling');
+      print('   Use either --no-mqtt (polling only) or --no-polling (MQTT only), not both');
+      exit(1);
+    }
 
     // Service URLs
     final authHost = _getArgValue(args, '--auth-host') ?? 'localhost';
@@ -79,11 +90,17 @@ void main(List<String> args) async {
     print('📋 Configuration:');
     print('   Username: $username');
     print('   Image: $imagePath');
-    print('   MQTT Enabled: ${!skipMqtt}');
-    if (!skipMqtt) {
+    print('   MQTT Enabled: ${!noMqtt}');
+    print('   Polling Enabled: ${!noPolling}');
+    if (!noMqtt && !noPolling) {
+      print('   Mode: MQTT + Polling (hybrid with fallback)');
       print('   MQTT Timeout: ${mqttTimeout}s');
       print('   Poll Interval: ${pollInterval}s (fallback)');
+    } else if (!noMqtt) {
+      print('   Mode: MQTT only (no fallback)');
+      print('   MQTT Timeout: ${mqttTimeout}s');
     } else {
+      print('   Mode: Polling only');
       print('   Poll Interval: ${pollInterval}s');
     }
     print('   Poll Timeout: ${pollTimeout}s');
@@ -143,7 +160,8 @@ void main(List<String> args) async {
     final completionResult = await _waitForJobCompletion(
       inferenceClient: inferenceClient,
       jobId: job.jobId,
-      useMqtt: !skipMqtt,
+      useMqtt: !noMqtt,
+      usePolling: !noPolling,
       mqttTimeout: Duration(seconds: mqttTimeout),
       pollInterval: Duration(seconds: pollInterval),
       pollTimeout: Duration(seconds: pollTimeout),
@@ -201,24 +219,26 @@ void main(List<String> args) async {
   }
 }
 
-/// Wait for job completion using hybrid MQTT + polling approach
+/// Wait for job completion using configurable MQTT + polling approach
 ///
-/// Priority:
-/// 1. MQTT event listener (if enabled) - waits for completion message
-/// 2. Polling fallback (if MQTT fails or disabled) - polls job status
+/// Strategy depends on flags:
+/// - Both enabled (default): Try MQTT first, fallback to polling
+/// - MQTT only: Use MQTT only, no fallback
+/// - Polling only: Use polling only
 ///
 Future<Job?> _waitForJobCompletion({
   required InferenceClient inferenceClient,
   required String jobId,
   required bool useMqtt,
+  required bool usePolling,
   required Duration mqttTimeout,
   required Duration pollInterval,
   required Duration pollTimeout,
   required String brokerAddress,
   required int brokerPort,
 }) async {
-  if (!useMqtt) {
-    // Use polling only
+  // If only polling is enabled
+  if (!useMqtt && usePolling) {
     return _pollJobCompletion(
       inferenceClient: inferenceClient,
       jobId: jobId,
@@ -227,7 +247,30 @@ Future<Job?> _waitForJobCompletion({
     );
   }
 
-  // Try MQTT first, fall back to polling on timeout/error
+  // If only MQTT is enabled (no fallback)
+  if (useMqtt && !usePolling) {
+    try {
+      final result = await _waitForMqttCompletion(
+        jobId: jobId,
+        timeout: mqttTimeout,
+        brokerAddress: brokerAddress,
+        brokerPort: brokerPort,
+      );
+
+      if (result != null) {
+        print('✅ Job completion detected via MQTT');
+        return await inferenceClient.getJob(jobId);
+      } else {
+        print('❌ MQTT timeout and polling fallback disabled');
+        return null;
+      }
+    } catch (e) {
+      print('❌ MQTT error and polling fallback disabled: $e');
+      return null;
+    }
+  }
+
+  // Default: Try MQTT first, fall back to polling if enabled
   try {
     final result = await _waitForMqttCompletion(
       jobId: jobId,
@@ -266,19 +309,84 @@ Future<bool?> _waitForMqttCompletion({
   required String brokerAddress,
   required int brokerPort,
 }) async {
-  print('   Connecting to MQTT broker at $brokerAddress:$brokerPort...');
+  print('   📡 Connecting to MQTT broker at $brokerAddress:$brokerPort...');
 
+  MqttServerClient? client;
   try {
-    // Note: MQTT implementation is stub in this example
-    // In real usage, would use mqtt5_client package directly
-    // The mqtt5_client integration would create a client with jobId and clientId
-    // and listen for completion messages on the broker
-    print('   ℹ️  MQTT support requires mqtt5_client package configuration');
-    print('   Proceeding with polling approach...');
-    return null;
+    // Create MQTT client
+    client = MqttServerClient.withPort(brokerAddress, 'image_embedding_${DateTime.now().millisecondsSinceEpoch}', brokerPort);
+
+    // Set up callbacks
+    client.onConnected = () {
+      print('   ✅ Connected to MQTT broker');
+    };
+
+    client.onDisconnected = () {
+      print('   ⚠️  Disconnected from MQTT broker');
+    };
+
+    // Connect to broker
+    await client.connect();
+
+    if (client.connectionStatus?.state != MqttConnectionState.connected) {
+      print('   ❌ Failed to connect to MQTT broker');
+      return null;
+    }
+
+    // Subscribe to inference events topic
+    const topic = 'inference/events';
+    print('   📡 Subscribing to topic: $topic');
+    client.subscribe(topic, MqttQos.atLeastOnce);
+
+    // Create completer for completion
+    final completer = Completer<bool>();
+
+    // Listen for messages
+    client.updates!.listen((List<MqttReceivedMessage<MqttMessage>> messages) {
+      for (final message in messages) {
+        final payload = message.payload as MqttPublishMessage;
+        final messageBytes = payload.payload.message;
+        if (messageBytes == null) continue;
+        final payloadStr = String.fromCharCodes(messageBytes.toList());
+
+        try {
+          final json = jsonDecode(payloadStr) as Map<String, dynamic>;
+          final eventType = json['event'] as String?;
+          final data = json['data'] as Map<String, dynamic>?;
+
+          // Check if this is job completion event for our job
+          if (eventType == 'job_completed' && data != null && data['job_id'] == jobId) {
+            print('   ✅ Received job_completed event via MQTT');
+            if (!completer.isCompleted) {
+              completer.complete(true);
+            }
+          }
+        } catch (e) {
+          // Ignore parse errors
+        }
+      }
+    });
+
+    // Set timeout
+    final timeoutFuture = Future.delayed(timeout, () {
+      if (!completer.isCompleted) {
+        print('   ⏱️  MQTT listener timeout after ${timeout.inSeconds}s');
+        completer.complete(false);
+      }
+    });
+
+    // Wait for either completion or timeout
+    final result = await Future.any([completer.future, timeoutFuture]);
+    return result;
+
   } catch (e) {
-    print('   MQTT connection failed: $e');
+    print('   ⚠️  MQTT error: $e');
     return null;
+  } finally {
+    // Clean up
+    if (client != null && client.connectionStatus?.state == MqttConnectionState.connected) {
+      client.disconnect();
+    }
   }
 }
 

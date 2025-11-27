@@ -22,6 +22,14 @@ try:
 except Exception as e:
     logger.error(f"Failed to initialize database: {e}", exc_info=True)
 
+# Initialize broadcaster at startup
+try:
+    from .broadcaster import get_broadcaster
+    broadcaster = get_broadcaster()
+    logger.info(f"Broadcaster initialized (enabled={broadcaster.enabled})")
+except Exception as e:
+    logger.error(f"Failed to initialize broadcaster: {e}", exc_info=True)
+
 # Create FastAPI app
 app = FastAPI(
     title="AI Inference Microservice",

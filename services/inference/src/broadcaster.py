@@ -28,17 +28,20 @@ class Broadcaster:
     def _setup_mqtt(self):
         """Setup MQTT client."""
         try:
-            # Use protocol version 5 if available, else default (3.1.1)
-            self.client = mqtt.Client(protocol=mqtt.MQTTv5)
+            # Use MQTT 3.1.1 (most compatible with mosquitto)
+            self.client = mqtt.Client(protocol=mqtt.MQTTv311)
             self.client.on_connect = self._on_connect
             self.client.on_disconnect = self._on_disconnect
-            
+
             logger.info(f"Connecting to MQTT broker at {MQTT_BROKER}:{MQTT_PORT}...")
-            self.client.connect(MQTT_BROKER, MQTT_PORT, 60)
-            self.client.loop_start()  # Start background loop
-            
+            # Start background loop first before connecting (non-blocking)
+            self.client.loop_start()
+            # Connect with keepalive to maintain connection
+            self.client.connect_async(MQTT_BROKER, MQTT_PORT, keepalive=30)
+            logger.info("MQTT connection initiated (async)")
+
         except Exception as e:
-            logger.error(f"Failed to setup MQTT client: {e}")
+            logger.error(f"Failed to setup MQTT client: {e}", exc_info=True)
             self.enabled = False
 
     def _on_connect(self, client, userdata, flags, rc, properties=None):
@@ -64,29 +67,34 @@ class Broadcaster:
         if not self.enabled:
             logger.debug(f"Broadcaster disabled, skipping publish of {event_type}")
             return
-            
+
         if not self.client:
             logger.warning(f"MQTT client not initialized, cannot publish {event_type}")
             return
 
         try:
+            # Check if connected before publishing
+            if not self.client.is_connected():
+                logger.warning(f"MQTT client not connected, queuing {event_type} for later publish")
+                # Still try to publish - paho will queue the message
+
             message = {
                 "event": event_type,
                 "data": payload,
                 "timestamp": int(time.time() * 1000)
             }
-            
+
             json_payload = json.dumps(message)
-            logger.info(f"Publishing MQTT event: {event_type} to topic {MQTT_TOPIC}")
-            info = self.client.publish(MQTT_TOPIC, json_payload)
-            
+            logger.info(f"📡 Publishing {event_type} to {MQTT_TOPIC}")
+            info = self.client.publish(MQTT_TOPIC, json_payload, qos=1)
+
             if info.rc != mqtt.MQTT_ERR_SUCCESS:
-                logger.error(f"Failed to publish message: {mqtt.error_string(info.rc)}")
+                logger.error(f"Failed to publish: {mqtt.error_string(info.rc)}")
             else:
-                logger.info(f"✅ Published {event_type} event successfully")
-                
+                logger.info(f"✅ Published {event_type}")
+
         except Exception as e:
-            logger.error(f"Error publishing message: {e}")
+            logger.error(f"Error publishing {event_type}: {e}", exc_info=True)
 
     def close(self):
         """Close connection."""
