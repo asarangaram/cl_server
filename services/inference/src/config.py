@@ -5,16 +5,31 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+# CL_SERVER_DIR is required - root directory for all persistent data
+CL_SERVER_DIR = os.getenv("CL_SERVER_DIR")
+if not CL_SERVER_DIR:
+    raise ValueError("CL_SERVER_DIR environment variable must be set")
+
+# Check write permission
+if not os.access(CL_SERVER_DIR, os.W_OK):
+    raise ValueError(f"CL_SERVER_DIR does not exist or no write permission: {CL_SERVER_DIR}")
+
 # Database configuration
-DATABASE_DIR = os.getenv("DATABASE_DIR", "../data")
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DATABASE_DIR}/inference.db")
+# Derived from CL_SERVER_DIR; can be overridden with DATABASE_URL environment variable
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{CL_SERVER_DIR}/inference.db")
 
 # Storage configuration
-STORAGE_DIR = os.getenv("STORAGE_DIR", f"{DATABASE_DIR}/inference/jobs")
+# Derived from CL_SERVER_DIR; can be overridden with STORAGE_DIR environment variable
+STORAGE_DIR = os.getenv("STORAGE_DIR", f"{CL_SERVER_DIR}/inference/jobs")
 
 # Authentication configuration
-PUBLIC_KEY_PATH = os.getenv("PUBLIC_KEY_PATH", f"{DATABASE_DIR}/public_key.pem")
+# Derived from CL_SERVER_DIR; can be overridden with PUBLIC_KEY_PATH environment variable
+PUBLIC_KEY_PATH = os.getenv("PUBLIC_KEY_PATH", f"{CL_SERVER_DIR}/public_key.pem")
 AUTH_DISABLED = os.getenv("AUTH_DISABLED", "false").lower() in ("true", "1", "yes")
+
+# Vector store configuration
+# Derived from CL_SERVER_DIR; can be overridden with VECTOR_STORE_PATH environment variable
+VECTOR_STORE_PATH = os.getenv("VECTOR_STORE_PATH", f"{CL_SERVER_DIR}/vector_store/qdrant")
 
 # Worker configuration
 WORKER_POLL_INTERVAL = int(os.getenv("WORKER_POLL_INTERVAL", "5"))  # seconds
@@ -36,15 +51,12 @@ MEDIA_STORE_STUB = os.getenv("MEDIA_STORE_STUB", "true").lower() in ("true", "1"
 # Logging configuration
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
-# Ensure directories exist
-Path(DATABASE_DIR).mkdir(parents=True, exist_ok=True)
-Path(STORAGE_DIR).mkdir(parents=True, exist_ok=True)
-
 __all__ = [
-    "DATABASE_DIR",
+    "CL_SERVER_DIR",
     "DATABASE_URL",
     "STORAGE_DIR",
     "PUBLIC_KEY_PATH",
+    "VECTOR_STORE_PATH",
     "AUTH_DISABLED",
     "WORKER_POLL_INTERVAL",
     "WORKER_MAX_RETRIES",

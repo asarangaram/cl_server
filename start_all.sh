@@ -44,6 +44,25 @@ fi
 echo ""
 
 ################################################################################
+# Validate CL_SERVER_DIR environment variable
+################################################################################
+
+if [ -z "$CL_SERVER_DIR" ]; then
+    echo -e "${RED}[✗] Error: CL_SERVER_DIR environment variable must be set${NC}"
+    echo -e "${YELLOW}    Example: export CL_SERVER_DIR=/path/to/data${NC}"
+    exit 1
+fi
+
+if [ ! -w "$CL_SERVER_DIR" ]; then
+    echo -e "${RED}[✗] Error: No write permission for CL_SERVER_DIR: $CL_SERVER_DIR${NC}"
+    echo -e "${YELLOW}    Please ensure the directory exists and you have write permissions${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}[✓] CL_SERVER_DIR is set and writable: $CL_SERVER_DIR${NC}"
+echo ""
+
+################################################################################
 # Function to check if port is in use
 ################################################################################
 check_port() {
@@ -77,7 +96,7 @@ run_migrations() {
 
     # Run migrations if alembic.ini exists
     if [ -f "alembic.ini" ]; then
-        if alembic upgrade head > /dev/null 2>&1; then
+        if CL_SERVER_DIR="$CL_SERVER_DIR" alembic upgrade head > /dev/null 2>&1; then
             echo -e "${GREEN}    ✓ Migrations completed${NC}"
         else
             echo -e "${YELLOW}    ⚠ Migration warning (may not be critical)${NC}"
@@ -118,9 +137,9 @@ start_service() {
 
     # Start the service in background
     if [ "$auth_flag" == "true" ]; then
-        AUTH_DISABLED=true python main.py > "${PROJECT_ROOT}/.${service_name}.log" 2>&1 &
+        CL_SERVER_DIR="$CL_SERVER_DIR" AUTH_DISABLED=true python main.py > "${PROJECT_ROOT}/.${service_name}.log" 2>&1 &
     else
-        python main.py > "${PROJECT_ROOT}/.${service_name}.log" 2>&1 &
+        CL_SERVER_DIR="$CL_SERVER_DIR" python main.py > "${PROJECT_ROOT}/.${service_name}.log" 2>&1 &
     fi
 
     local pid=$!

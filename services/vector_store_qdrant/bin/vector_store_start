@@ -12,6 +12,19 @@ VECTOR_STORE_DIR="$(dirname "$QDRANT_DIR")"  # vector_store directory
 
 echo "🚀 Starting Qdrant Vector Store..."
 
+# Check if CL_SERVER_DIR is set
+if [ -z "$CL_SERVER_DIR" ]; then
+    echo "❌ Error: CL_SERVER_DIR environment variable must be set"
+    echo "   Example: export CL_SERVER_DIR=/path/to/data"
+    exit 1
+fi
+
+# Check if CL_SERVER_DIR has write permission
+if [ ! -w "$CL_SERVER_DIR" ]; then
+    echo "❌ Error: No write permission for CL_SERVER_DIR: $CL_SERVER_DIR"
+    exit 1
+fi
+
 # Check if Docker is running
 if ! docker info > /dev/null 2>&1; then
     echo "❌ Error: Docker is not running. Please start Docker first."
@@ -19,7 +32,7 @@ if ! docker info > /dev/null 2>&1; then
 fi
 
 # Create data directory if it doesn't exist
-mkdir -p "$VECTOR_STORE_DIR/../data/vector_store/qdrant"
+mkdir -p "$CL_SERVER_DIR/vector_store/qdrant"
 
 # Start Qdrant container
 echo "📦 Starting Qdrant container..."
@@ -39,7 +52,7 @@ while [ $attempt -lt $max_attempts ]; do
         echo "🔌 REST API: http://localhost:6333"
         echo "🔌 gRPC API: localhost:6334"
         echo ""
-        echo "💾 Data stored in: $VECTOR_STORE_DIR/../data/vector_store/qdrant"
+        echo "💾 Data stored in: $CL_SERVER_DIR/vector_store/qdrant"
         echo ""
         echo "To stop: $SCRIPT_DIR/vector_store_stop"
         echo "To view logs: cd $QDRANT_DIR && docker-compose logs -f qdrant"

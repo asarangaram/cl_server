@@ -18,11 +18,27 @@ This guide explains how to set up and start all microservices in the CoLAN Serve
 
 > All commands assume you are in the project root directory unless otherwise noted.
 
+### Environment Setup
+
+**IMPORTANT:** You must set the `CL_SERVER_DIR` environment variable before starting services. This specifies where all persistent data (databases, media files, vector store, keys) will be stored.
+
+```bash
+# Set the data directory (required)
+export CL_SERVER_DIR=/path/to/your/data/directory
+
+# The directory will be created if it doesn't exist, but must have write permissions
+# Example:
+export CL_SERVER_DIR=$HOME/.cl_server_data
+```
+
 ### Using the Start Script (Recommended)
 
 The easiest way to start all services:
 
 ```bash
+# Set the data directory (required)
+export CL_SERVER_DIR=$HOME/.cl_server_data
+
 # Make the script executable (first time only)
 chmod +x start_all.sh
 
@@ -150,11 +166,15 @@ pip install -e .
 pip install python-magic-bin  # Required for file type detection
 ```
 
-#### Step 4: Set environment variables (optional)
+#### Step 4: Set environment variables (if needed)
 ```bash
-export DATABASE_DIR="../data"                    # Database location
-export MEDIA_STORAGE_DIR="../data/media_store"  # Media file storage location
-export PUBLIC_KEY_PATH="../data/public_key.pem" # JWT public key path
+# CL_SERVER_DIR is REQUIRED - set it before starting
+export CL_SERVER_DIR=$HOME/.cl_server_data
+
+# Optional - Override default paths (defaults derive from CL_SERVER_DIR)
+# export DATABASE_URL="sqlite:///$CL_SERVER_DIR/media_store.db"
+# export MEDIA_STORAGE_DIR="$CL_SERVER_DIR/media"
+# export PUBLIC_KEY_PATH="$CL_SERVER_DIR/public_key.pem"
 export READ_AUTH_ENABLED=false                  # Allow read without auth
 ```
 
@@ -165,8 +185,8 @@ alembic upgrade head
 
 #### Step 6: Generate or provide JWT public key for authentication
 - If using authentication service, get the public key from authentication service
-- Place it at: `../data/public_key.pem`
-- Or set `PUBLIC_KEY_PATH` environment variable
+- Place it at: `$CL_SERVER_DIR/public_key.pem`
+- Or set `PUBLIC_KEY_PATH` environment variable (defaults to `$CL_SERVER_DIR/public_key.pem`)
 
 #### Step 7: Start the service
 ```bash
@@ -199,12 +219,12 @@ AUTH_DISABLED=true python main.py
 
 | Variable | Default | Effect |
 |----------|---------|--------|
+| `CL_SERVER_DIR` | **(required)** | Root directory for all persistent data |
 | `AUTH_DISABLED` | false | Disables authentication checks when true |
 | `READ_AUTH_ENABLED` | false | Requires authentication for read operations when true |
-| `DATABASE_DIR` | `../data` | Directory where SQLite database is stored |
-| `DATABASE_URL` | `sqlite:///./data/media_store.db` | SQLAlchemy database URL |
-| `MEDIA_STORAGE_DIR` | `../data/media_store` | Directory where uploaded media files are stored |
-| `PUBLIC_KEY_PATH` | `../data/public_key.pem` | Path to JWT public key for token validation |
+| `DATABASE_URL` | `sqlite:///$CL_SERVER_DIR/media_store.db` | SQLAlchemy database URL (derived from CL_SERVER_DIR) |
+| `MEDIA_STORAGE_DIR` | `$CL_SERVER_DIR/media` | Directory where uploaded media files are stored (derived from CL_SERVER_DIR) |
+| `PUBLIC_KEY_PATH` | `$CL_SERVER_DIR/public_key.pem` | Path to JWT public key for token validation (derived from CL_SERVER_DIR) |
 
 ### API Endpoints
 
@@ -262,12 +282,17 @@ pip install -e .
 
 > **Note:** This may take a long time due to torch and other ML dependencies. If torch fails on macOS, see [Troubleshooting](#troubleshooting-inference) section below.
 
-#### Step 4: Set environment variables (optional)
+#### Step 4: Set environment variables (if needed)
 ```bash
-export PUBLIC_KEY_PATH="../data/public_key.pem"  # JWT public key
+# CL_SERVER_DIR is REQUIRED - set it before starting
+export CL_SERVER_DIR=$HOME/.cl_server_data
+
+# Optional - Override default paths (defaults derive from CL_SERVER_DIR)
+# export PUBLIC_KEY_PATH="$CL_SERVER_DIR/public_key.pem"
+# export VECTOR_STORE_PATH="$CL_SERVER_DIR/vector_store/qdrant"
 export QDRANT_URL="http://localhost:6333"       # Qdrant vector DB
-export MQTT_BROKER_HOST="localhost"              # MQTT broker address
-export MQTT_BROKER_PORT=1883                     # MQTT broker port
+export MQTT_BROKER="localhost"                   # MQTT broker address
+export MQTT_PORT=1883                            # MQTT broker port
 ```
 
 #### Step 5: Set up vector database (Qdrant)
@@ -327,11 +352,13 @@ AUTH_DISABLED=true python main.py
 
 | Variable | Default | Effect |
 |----------|---------|--------|
+| `CL_SERVER_DIR` | **(required)** | Root directory for all persistent data |
 | `AUTH_DISABLED` | false | Disables authentication checks when true |
-| `PUBLIC_KEY_PATH` | `../data/public_key.pem` | Path to JWT public key for token validation |
+| `PUBLIC_KEY_PATH` | `$CL_SERVER_DIR/public_key.pem` | Path to JWT public key for token validation (derived from CL_SERVER_DIR) |
+| `VECTOR_STORE_PATH` | `$CL_SERVER_DIR/vector_store/qdrant` | Path to Qdrant vector store (derived from CL_SERVER_DIR) |
 | `QDRANT_URL` | `http://localhost:6333` | Connection URL for Qdrant vector database |
-| `MQTT_BROKER_HOST` | localhost | Hostname/IP of MQTT broker (Mosquitto) |
-| `MQTT_BROKER_PORT` | 1883 | Port number of MQTT broker |
+| `MQTT_BROKER` | localhost | Hostname/IP of MQTT broker (Mosquitto) |
+| `MQTT_PORT` | 1883 | Port number of MQTT broker |
 
 ### API Endpoints
 
