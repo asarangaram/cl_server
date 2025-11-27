@@ -286,15 +286,14 @@ class EntityService:
         if image:
             # Extract metadata using CLMetaData
             file_meta = self._extract_metadata(image, filename)
-            
+
             # Check for duplicate MD5
             if file_meta.get("md5"):
                 duplicate = self._check_duplicate_md5(file_meta["md5"])
                 if duplicate:
-                    raise DuplicateFileError(
-                        f"File with MD5 {file_meta['md5']} already exists (entity ID: {duplicate.id})"
-                    )
-            
+                    # Return the existing item instead of raising an error
+                    return self._entity_to_item(duplicate)
+
             # Save file to storage
             file_path = self.file_storage.save_file(image, file_meta, filename)
         
@@ -379,20 +378,19 @@ class EntityService:
         if image:
             # Extract metadata from new file
             file_meta = self._extract_metadata(image, filename)
-            
+
             # Check for duplicate MD5 (excluding current entity)
             if file_meta.get("md5"):
                 duplicate = self._check_duplicate_md5(file_meta["md5"], exclude_entity_id=entity_id)
                 if duplicate:
-                    raise DuplicateFileError(
-                        f"File with MD5 {file_meta['md5']} already exists (entity ID: {duplicate.id})"
-                    )
-            
+                    # Return the existing item instead of raising an error
+                    return self._entity_to_item(duplicate)
+
             # Delete old file if exists
             old_file_path = entity.file_path
             if old_file_path:
                 self.file_storage.delete_file(old_file_path)
-            
+
             # Save new file
             file_path = self.file_storage.save_file(image, file_meta, filename)
                    
