@@ -41,21 +41,37 @@ class MediaStoreClient {
     try {
       _validateToken(token);
 
-      final body = {
+      final body = <String, String>{
+        'is_collection': 'true',
         'label': label,
-        'is_collection': true,
         if (description != null) 'description': description,
-        if (parentId != null) 'parent_id': parentId,
+        if (parentId != null) 'parent_id': parentId.toString(),
       };
 
-      final response = await _httpClient.post('/entity/', body: body, token: token);
+      // Encode as form-urlencoded
+      final bodyStr = body.entries
+          .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+          .join('&');
+
+      final response = await _httpClient.post(
+        '/entity/',
+        body: bodyStr,
+        token: token,
+        isFormData: true,
+      );
 
       if (response is Map<String, dynamic>) {
-        return Entity.fromJson(response);
+        try {
+          return Entity.fromJson(response);
+        } catch (parseError) {
+          throw ValidationException(
+            message: 'Failed to parse collection response: $parseError. Response: $response',
+          );
+        }
       }
 
       throw ValidationException(
-        message: 'Unexpected response format for collection creation',
+        message: 'Unexpected response format for collection creation: $response',
       );
     } catch (e) {
       if (e is CLServerException) {
@@ -85,14 +101,21 @@ class MediaStoreClient {
         description: description,
         parentId: parentId,
         endpoint: '/entity/',
+        isCollection: false,
       );
 
       if (response is Map<String, dynamic>) {
-        return Entity.fromJson(response);
+        try {
+          return Entity.fromJson(response);
+        } catch (parseError) {
+          throw ValidationException(
+            message: 'Failed to parse entity response: $parseError. Response: $response',
+          );
+        }
       }
 
       throw ValidationException(
-        message: 'Unexpected response format for entity creation',
+        message: 'Unexpected response format for entity creation: $response',
       );
     } catch (e) {
       if (e is CLServerException) {

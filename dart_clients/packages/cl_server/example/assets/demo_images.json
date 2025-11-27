@@ -1,0 +1,18 @@
+{
+  "description": "Demo images for CL Server image embedding example application",
+  "base_directory": "/Users/anandasarangaram/Work/github/cl_server/demos/images",
+  "images": [
+    "/Users/anandasarangaram/Work/github/cl_server/demos/images/20210420_144043.jpg",
+    "/Users/anandasarangaram/Work/github/cl_server/demos/images/20210420_225822.jpg",
+    "/Users/anandasarangaram/Work/github/cl_server/demos/images/20210422_203241.jpg",
+    "/Users/anandasarangaram/Work/github/cl_server/demos/images/20210422_204834.jpg",
+    "/Users/anandasarangaram/Work/github/cl_server/demos/images/20210424_004327.jpg",
+    "/Users/anandasarangaram/Work/github/cl_server/demos/images/20210426_153946.jpg",
+    "/Users/anandasarangaram/Work/github/cl_server/demos/images/20210426_155703.jpg",
+    "/Users/anandasarangaram/Work/github/cl_server/demos/images/new Images/IMG20240901123952.jpg",
+    "/Users/anandasarangaram/Work/github/cl_server/demos/images/new Images/IMG20240901123953.jpg",
+    "/Users/anandasarangaram/Work/github/cl_server/demos/images/new Images/IMG20240901123954.jpg",
+    "/Users/anandasarangaram/Work/github/cl_server/demos/images/new Images/IMG20240901123954_01.jpg",
+    "/Users/anandasarangaram/Work/github/cl_server/demos/images/new Images/IMG20240901123954_02.jpg"
+  ]
+}

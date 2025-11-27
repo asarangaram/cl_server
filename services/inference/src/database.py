@@ -33,9 +33,8 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def init_db():
-    """Initialize database."""
-    # Add any initial data seeding here if needed
-    pass
+    """Initialize database and create tables."""
+    Base.metadata.create_all(bind=engine)
 
 
 __all__ = ["Base", "engine", "SessionLocal", "get_db", "init_db"]

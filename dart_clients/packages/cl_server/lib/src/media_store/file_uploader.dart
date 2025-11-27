@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../core/http_client.dart';
@@ -20,6 +21,7 @@ class FileUploader {
     int? parentId,
     required String endpoint,
     String method = 'POST',
+    bool isCollection = false,
   }) async {
     try {
       if (!await file.exists()) {
@@ -38,6 +40,7 @@ class FileUploader {
         file: file,
         description: description,
         parentId: parentId,
+        isCollection: isCollection,
       );
 
       // Send request
@@ -72,6 +75,7 @@ class FileUploader {
     required File file,
     String? description,
     int? parentId,
+    bool isCollection = false,
   }) {
     final request = http.MultipartRequest(method, uri);
 
@@ -79,6 +83,7 @@ class FileUploader {
     request.headers['Authorization'] = 'Bearer $token';
 
     // Add form fields
+    request.fields['is_collection'] = isCollection.toString();
     if (label != null) {
       request.fields['label'] = label;
     }
@@ -89,10 +94,10 @@ class FileUploader {
       request.fields['parent_id'] = parentId.toString();
     }
 
-    // Add file
+    // Add file (named 'image' for media store endpoint)
     request.files.add(
       http.MultipartFile(
-        'file',
+        'image',
         file.openRead(),
         file.lengthSync(),
         filename: file.path.split('/').last,
@@ -172,135 +177,18 @@ class FileUploader {
     }
 
     try {
-      final json = Uri.splitQueryString(responseBody);
-      if (json is Map<String, dynamic>) {
-        return json;
+      final decoded = jsonDecode(responseBody);
+      if (decoded is Map<String, dynamic>) {
+        return decoded;
+      } else if (decoded is List) {
+        // If it's a list, wrap it in a map
+        return {'data': decoded};
       }
+      // If it's something else, convert to string and wrap
+      return {'data': decoded.toString()};
     } catch (e) {
-      // Not URL encoded, try JSON parsing
+      // If JSON decode fails, return the raw body as detail
+      return {'detail': responseBody};
     }
-
-    // Try JSON parsing
-    try {
-      // Simple JSON parser for basic structures
-      if (responseBody.startsWith('{')) {
-        return _simpleJsonParse(responseBody);
-      }
-      if (responseBody.startsWith('[')) {
-        return {'data': _simpleJsonParse(responseBody)};
-      }
-    } catch (e) {
-      // Fall through to error handling
-    }
-
-    return {'detail': responseBody};
-  }
-
-  /// Simple JSON parser for basic structures
-  Map<String, dynamic> _simpleJsonParse(String jsonString) {
-    // Remove whitespace
-    jsonString = jsonString.trim();
-
-    // Handle empty object
-    if (jsonString == '{}') {
-      return {};
-    }
-
-    // Basic parsing for common cases
-    // This is a simplified parser; for production, use a proper JSON library
-    final map = <String, dynamic>{};
-
-    // Remove outer braces
-    if (jsonString.startsWith('{') && jsonString.endsWith('}')) {
-      jsonString = jsonString.substring(1, jsonString.length - 1);
-    }
-
-    // Split by comma (simplified - doesn't handle nested objects)
-    final pairs = _smartSplit(jsonString, ',');
-
-    for (final pair in pairs) {
-      final colonIndex = pair.indexOf(':');
-      if (colonIndex > 0) {
-        final key = pair.substring(0, colonIndex).trim();
-        final value = pair.substring(colonIndex + 1).trim();
-
-        // Remove quotes from key
-        final cleanKey = key.replaceAll('"', '').replaceAll("'", '');
-
-        // Parse value
-        final parsedValue = _parseValue(value);
-        map[cleanKey] = parsedValue;
-      }
-    }
-
-    return map;
-  }
-
-  /// Smart split that respects quoted strings
-  List<String> _smartSplit(String str, String delimiter) {
-    final parts = <String>[];
-    var current = '';
-    var inQuotes = false;
-    var quoteChar = '"';
-
-    for (var i = 0; i < str.length; i++) {
-      final char = str[i];
-
-      if ((char == '"' || char == "'") && (i == 0 || str[i - 1] != '\\')) {
-        if (!inQuotes) {
-          inQuotes = true;
-          quoteChar = char;
-        } else if (char == quoteChar) {
-          inQuotes = false;
-        }
-      }
-
-      if (char == delimiter && !inQuotes) {
-        if (current.isNotEmpty) {
-          parts.add(current);
-        }
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-
-    if (current.isNotEmpty) {
-      parts.add(current);
-    }
-
-    return parts;
-  }
-
-  /// Parse a JSON value
-  dynamic _parseValue(String value) {
-    value = value.trim();
-
-    // null
-    if (value == 'null') return null;
-
-    // boolean
-    if (value == 'true') return true;
-    if (value == 'false') return false;
-
-    // number
-    try {
-      if (value.contains('.')) {
-        return double.parse(value);
-      } else {
-        return int.parse(value);
-      }
-    } catch (e) {
-      // Not a number
-    }
-
-    // string
-    if ((value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'"))) {
-      return value.substring(1, value.length - 1);
-    }
-
-    // If we can't parse it, return as string
-    return value;
   }
 }

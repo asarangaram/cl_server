@@ -52,6 +52,11 @@ class CLHttpClient {
           headers: headers,
           body: body,
         ).timeout(requestTimeout);
+      } else if (isFormData && body is String) {
+        // Form-urlencoded string
+        response = await _httpClient
+            .post(uri, headers: headers, body: body)
+            .timeout(requestTimeout);
       } else {
         final bodyStr = body is String ? body : jsonEncode(body);
         response = await _httpClient
@@ -171,6 +176,8 @@ class CLHttpClient {
 
     if (!isFormData) {
       headers['Content-Type'] = 'application/json';
+    } else {
+      headers['Content-Type'] = 'application/x-www-form-urlencoded';
     }
 
     if (token != null) {

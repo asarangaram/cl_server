@@ -8,24 +8,19 @@ import signal
 from typing import Optional
 
 import numpy as np
-from cl_ml_tools import VectorCore
 from PIL import Image
 from sqlalchemy.orm import Session
 
 from .broadcaster import get_broadcaster
 from .config import QDRANT_URL, WORKER_MAX_RETRIES, WORKER_POLL_INTERVAL
 from .database import SessionLocal
-from .inferences import (
-    FaceDetectionInference,
-    FaceEmbeddingInference,
-    ImageEmbeddingInference,
-    QdrantFaceStore,
-    QdrantImageStore,
-)
 from .job_service import JobService
 from .media_store_client import MediaStoreClient
 from .models import Job
 from .queue import Queue
+
+# Note: Heavy ML dependencies (VectorCore, inference classes) are imported lazily
+# inside Worker.__init__() to allow graceful handling of missing dependencies
 
 
 
@@ -63,35 +58,84 @@ class Worker:
         self.worker_id = worker_id
         self.media_store_client = MediaStoreClient()
 
+        # Initialize models as None - will attempt to load them
+        self.image_inference = None
+        self.face_detection = None
+        self.face_inference = None
+        self.image_store = None
+        self.face_store = None
+        self.image_vector_core = None
+        self.face_vector_core = None
+
         logger.info("Initializing ML models...")
 
-        # Initialize inference engines
-        self.image_inference = ImageEmbeddingInference()
-        self.face_detection = FaceDetectionInference()
-        self.face_inference = FaceEmbeddingInference()
+        # Lazy import heavy ML dependencies with graceful fallback
+        try:
+            from .inferences import ImageEmbeddingInference
+            # Initialize inference engines
+            self.image_inference = ImageEmbeddingInference()
+            logger.info("✓ Image inference engine loaded")
+        except Exception as e:
+            logger.warning(f"Failed to load image inference: {e}")
 
-        # Initialize vector stores
-        self.image_store = QdrantImageStore(url=QDRANT_URL, logger=logger)
-        self.face_store = QdrantFaceStore(url=QDRANT_URL, logger=logger)
+        try:
+            from .inferences import FaceDetectionInference
+            self.face_detection = FaceDetectionInference()
+            logger.info("✓ Face detection engine loaded")
+        except Exception as e:
+            logger.warning(f"Failed to load face detection: {e}")
 
+        try:
+            from .inferences import FaceEmbeddingInference
+            self.face_inference = FaceEmbeddingInference()
+            logger.info("✓ Face inference engine loaded")
+        except Exception as e:
+            logger.warning(f"Failed to load face inference: {e}")
 
-        # Initialize VectorCore for image embeddings
-        self.image_vector_core = VectorCore(
-            inference_engine=self.image_inference,
-            store_interface=self.image_store,
-            logger=logger,
-            preprocess_cb=self._preprocess_image,
-        )
+        try:
+            from .inferences import QdrantImageStore
+            # Initialize vector stores
+            self.image_store = QdrantImageStore(url=QDRANT_URL, logger=logger)
+            logger.info("✓ Image vector store initialized")
+        except Exception as e:
+            logger.warning(f"Failed to initialize image store: {e}")
 
-        # Initialize VectorCore for face embeddings
-        self.face_vector_core = VectorCore(
-            inference_engine=self.face_inference,
-            store_interface=self.face_store,
-            logger=logger,
-            preprocess_cb=self._preprocess_image,
-        )
+        try:
+            from .inferences import QdrantFaceStore
+            self.face_store = QdrantFaceStore(url=QDRANT_URL, logger=logger)
+            logger.info("✓ Face vector store initialized")
+        except Exception as e:
+            logger.warning(f"Failed to initialize face store: {e}")
 
-        logger.info("✓ Worker initialized successfully")
+        try:
+            from cl_ml_tools import VectorCore
+            # Initialize VectorCore for image embeddings
+            if self.image_inference and self.image_store:
+                self.image_vector_core = VectorCore(
+                    inference_engine=self.image_inference,
+                    store_interface=self.image_store,
+                    logger=logger,
+                    preprocess_cb=self._preprocess_image,
+                )
+                logger.info("✓ Image VectorCore initialized")
+        except Exception as e:
+            logger.warning(f"Failed to initialize image VectorCore: {e}")
+
+        try:
+            from cl_ml_tools import VectorCore
+            # Initialize VectorCore for face embeddings
+            if self.face_inference and self.face_store:
+                self.face_vector_core = VectorCore(
+                    inference_engine=self.face_inference,
+                    store_interface=self.face_store,
+                    logger=logger,
+                    preprocess_cb=self._preprocess_image,
+                )
+                logger.info("✓ Face VectorCore initialized")
+        except Exception as e:
+            logger.warning(f"Failed to initialize face VectorCore: {e}")
+
+        logger.info(f"✓ Worker {self.worker_id} initialized (models available: image={self.image_vector_core is not None}, face={self.face_vector_core is not None})")
 
     def _preprocess_image(self, data) -> Optional[np.ndarray]:
         """
@@ -239,6 +283,10 @@ class Worker:
             Result dictionary with embedding info
         """
         logger.info(f"Generating and storing image embedding for job {job_id}")
+
+        # Check if image VectorCore is available
+        if not self.image_vector_core:
+            raise Exception("Image embedding model not available - worker initialization incomplete")
 
         # Use VectorCore to generate embedding and store in Qdrant
         # Point ID is the media_store_id (integer)

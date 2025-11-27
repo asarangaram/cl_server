@@ -15,6 +15,13 @@ from .routes import router
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Initialize database tables
+try:
+    init_db()
+    logger.info("Database tables initialized successfully")
+except Exception as e:
+    logger.error(f"Failed to initialize database: {e}", exc_info=True)
+
 # Create FastAPI app
 app = FastAPI(
     title="AI Inference Microservice",

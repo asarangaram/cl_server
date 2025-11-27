@@ -1,0 +1,29 @@
+{
+  "test_images": [
+    {
+      "name": "test_image_1",
+      "absolute_path": "/Users/anandasarangaram/Work/github/cl_server/demos/images/20210420_144043.jpg",
+      "description": "Primary test image"
+    },
+    {
+      "name": "test_image_2",
+      "absolute_path": "/Users/anandasarangaram/Work/github/cl_server/demos/images/20210420_225822.jpg",
+      "description": "Secondary test image"
+    },
+    {
+      "name": "test_image_3",
+      "absolute_path": "/Users/anandasarangaram/Work/github/cl_server/demos/images/20210422_203241.jpg",
+      "description": "Tertiary test image"
+    },
+    {
+      "name": "test_image_4",
+      "absolute_path": "/Users/anandasarangaram/Work/github/cl_server/demos/images/new Images/IMG20240901123952.jpg",
+      "description": "Modern test image from new Images folder"
+    },
+    {
+      "name": "test_image_5",
+      "absolute_path": "/Users/anandasarangaram/Work/github/cl_server/demos/images/new Images/IMG20240901123953.jpg",
+      "description": "Additional modern test image"
+    }
+  ]
+}

@@ -54,20 +54,20 @@ class Entity {
       description: json['description'] as String?,
       parentId: json['parent_id'] as int?,
       addedDate: json['added_date'] != null
-          ? DateTime.parse(json['added_date'] as String)
+          ? _parseDate(json['added_date'])
           : null,
       updatedDate: json['updated_date'] != null
-          ? DateTime.parse(json['updated_date'] as String)
+          ? _parseDate(json['updated_date'])
           : null,
       createDate: json['create_date'] != null
-          ? DateTime.parse(json['create_date'] as String)
+          ? _parseDate(json['create_date'])
           : null,
-      addedBy: json['added_by'] as int?,
-      updatedBy: json['updated_by'] as int?,
-      fileSize: json['file_size'] as int?,
-      height: json['height'] as int?,
-      width: json['width'] as int?,
-      duration: json['duration'] as int?,
+      addedBy: _parseNullableInt(json['added_by']),
+      updatedBy: _parseNullableInt(json['updated_by']),
+      fileSize: _parseNullableInt(json['file_size']),
+      height: _parseNullableInt(json['height']),
+      width: _parseNullableInt(json['width']),
+      duration: _parseNullableInt(json['duration']),
       mimeType: json['mime_type'] as String?,
       type: json['type'] as String?,
       extension: json['extension'] as String?,
@@ -101,6 +101,25 @@ class Entity {
       'file_path': filePath,
       'is_deleted': isDeleted,
     };
+  }
+
+  /// Parse nullable integer safely
+  static int? _parseNullableInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  /// Parse date from either string (ISO8601) or integer (milliseconds since epoch)
+  static DateTime? _parseDate(dynamic value) {
+    if (value == null) return null;
+    if (value is String) {
+      return DateTime.parse(value);
+    } else if (value is int) {
+      return DateTime.fromMillisecondsSinceEpoch(value);
+    }
+    return null;
   }
 
   @override
