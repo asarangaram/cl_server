@@ -59,6 +59,44 @@ fi
 echo ""
 
 ################################################################################
+# Check Vector Store (Qdrant) Health
+################################################################################
+
+echo "Checking Vector Store (Qdrant) health..."
+echo ""
+
+QDRANT_TIMEOUT=60
+QDRANT_ELAPSED=0
+QDRANT_INTERVAL=2
+
+while [ $QDRANT_ELAPSED -lt $QDRANT_TIMEOUT ]; do
+    if timeout 5 bash -c 'cat < /dev/null > /dev/tcp/127.0.0.1/6333' 2>/dev/null; then
+        echo -e "${GREEN}[✓] Vector Store (Qdrant) is healthy and accessible on port 6333${NC}"
+        echo ""
+        break
+    else
+        QDRANT_ELAPSED=$((QDRANT_ELAPSED + QDRANT_INTERVAL))
+        if [ $QDRANT_ELAPSED -lt $QDRANT_TIMEOUT ]; then
+            echo -e "${YELLOW}[*] Waiting for Vector Store... ($QDRANT_ELAPSED/$QDRANT_TIMEOUT seconds)${NC}"
+            sleep $QDRANT_INTERVAL
+        fi
+    fi
+done
+
+if [ $QDRANT_ELAPSED -ge $QDRANT_TIMEOUT ]; then
+    echo -e "${RED}[✗] Error: Vector Store (Qdrant) is not accessible on port 6333${NC}"
+    echo -e "${RED}    Qdrant must be running for the worker to function properly${NC}"
+    echo -e "${YELLOW}    Please ensure Qdrant container is running: docker ps${NC}"
+    echo -e "${YELLOW}    To start Qdrant:${NC}"
+    echo -e "${YELLOW}      cd services/vector_store_qdrant${NC}"
+    echo -e "${YELLOW}      export CL_SERVER_DIR=/path/to/data${NC}"
+    echo -e "${YELLOW}      docker-compose up -d${NC}"
+    exit 1
+fi
+
+echo ""
+
+################################################################################
 # Start Inference Worker
 ################################################################################
 
