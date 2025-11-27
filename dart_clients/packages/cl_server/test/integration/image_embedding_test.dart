@@ -247,7 +247,7 @@ void main() {
           final job = await helper.submitEmbeddingJob(token, mediaStoreId);
           context.registerJob(job.jobId);
 
-          // Wait using MQTT-only mechanism
+          // Wait using MQTT-only mechanism (NO polling fallback)
           final completedJob =
               await helper.waitForJobCompletionAdvanced(
             job.jobId,
@@ -256,12 +256,10 @@ void main() {
             mqttTimeout: Duration(seconds: 60),
           );
 
-          // MQTT might timeout if broker unavailable, so accept null
-          // (test still passes to show MQTT infrastructure works when available)
-          if (completedJob != null) {
-            expect(completedJob.status, equals('completed'));
-            expect(completedJob.result, isNotNull);
-          }
+          // MQTT must succeed - no fallback allowed
+          expect(completedJob, isNotNull);
+          expect(completedJob!.status, equals('completed'));
+          expect(completedJob.result, isNotNull);
         },
         timeout: Timeout(Duration(seconds: 90)),
       );
@@ -598,15 +596,16 @@ void main() {
           final job = await helper.submitEmbeddingJob(token, mediaStoreId);
           context.registerJob(job.jobId);
 
-          // Wait with extremely short polling timeout
+          // Wait with very short polling timeout to test timeout behavior
           final result = await helper.waitForJobCompletionAdvanced(
             job.jobId,
             useMqtt: false,
             usePolling: true,
-            maxDuration: Duration(milliseconds: 50),
+            maxDuration: Duration(milliseconds: 10),
+            pollInterval: Duration(milliseconds: 5),
           );
 
-          // Should timeout and return null
+          // Should timeout and return null (job processing takes longer than timeout)
           expect(result, isNull);
         },
       );
