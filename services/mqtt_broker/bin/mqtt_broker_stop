@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# MQTT Broker - Stop Script
+# Can be run from anywhere
+
+set -e
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MQTT_DIR="$(dirname "$SCRIPT_DIR")"  # mqtt_broker directory
+
+echo "🛑 Stopping MQTT Broker..."
+
+# Check if Docker is running
+if ! docker info > /dev/null 2>&1; then
+    echo "❌ Error: Docker is not running"
+    exit 1
+fi
+
+# Stop MQTT broker container
+cd "$MQTT_DIR"
+docker-compose down
+
+echo "✅ MQTT Broker stopped successfully"

@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: cl-server-mqtt-broker
+    ports:
+      - "1883:1883" # MQTT
+      - "9001:9001" # WebSocket
+    volumes:
+      - ${CL_SERVER_DIR}/mqtt/config:/mosquitto/config
+      - ${CL_SERVER_DIR}/mqtt/data:/mosquitto/data
+      - ${CL_SERVER_DIR}/mqtt/log:/mosquitto/log
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "timeout 5 mosquitto_sub -t '$$SYS/#' -C 1 || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s

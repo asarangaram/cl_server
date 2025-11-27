@@ -1,0 +1,100 @@
+#!/bin/bash
+
+# MQTT Broker - Start Script
+# Can be run from anywhere
+
+set -e
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MQTT_DIR="$(dirname "$SCRIPT_DIR")"  # mqtt_broker directory
+
+echo "🚀 Starting MQTT Broker..."
+
+# Check if CL_SERVER_DIR is set
+if [ -z "$CL_SERVER_DIR" ]; then
+    echo "❌ Error: CL_SERVER_DIR environment variable must be set"
+    echo "   Example: export CL_SERVER_DIR=/path/to/data"
+    exit 1
+fi
+
+# Check if CL_SERVER_DIR has write permission
+if [ ! -w "$CL_SERVER_DIR" ]; then
+    echo "❌ Error: No write permission for CL_SERVER_DIR: $CL_SERVER_DIR"
+    exit 1
+fi
+
+# Check if Docker is running
+if ! docker info > /dev/null 2>&1; then
+    echo "❌ Error: Docker is not running. Please start Docker first."
+    exit 1
+fi
+
+# Create data directories if they don't exist
+mkdir -p "$CL_SERVER_DIR/mqtt/config"
+mkdir -p "$CL_SERVER_DIR/mqtt/data"
+mkdir -p "$CL_SERVER_DIR/mqtt/log"
+
+# Create default mosquitto configuration if it doesn't exist
+if [ ! -f "$CL_SERVER_DIR/mqtt/config/mosquitto.conf" ]; then
+    echo "📝 Creating default Mosquitto configuration..."
+    cat > "$CL_SERVER_DIR/mqtt/config/mosquitto.conf" << 'EOF'
+# Mosquitto Configuration for CL Server
+
+# Allow anonymous connections (for development)
+allow_anonymous true
+
+# Listeners
+listener 1883
+protocol mqtt
+
+listener 9001
+protocol websockets
+
+# Persistence
+persistence true
+persistence_location /mosquitto/data/
+
+# Logging
+log_dest file /mosquitto/log/mosquitto.log
+log_dest stdout
+log_type all
+
+# Connection settings
+max_connections -1
+EOF
+fi
+
+# Start MQTT broker container
+echo "📦 Starting MQTT broker container..."
+cd "$MQTT_DIR"
+docker-compose up -d
+
+# Wait for MQTT broker to be healthy
+echo "⏳ Waiting for MQTT broker to be ready..."
+max_attempts=30
+attempt=0
+
+while [ $attempt -lt $max_attempts ]; do
+    if docker exec cl-server-mqtt-broker mosquitto_sub -t '$SYS/#' -C 1 -W 2 > /dev/null 2>&1; then
+        echo "✅ MQTT Broker is ready!"
+        echo ""
+        echo "📡 MQTT Broker: localhost:1883"
+        echo "🌐 WebSocket: localhost:9001"
+        echo ""
+        echo "💾 Data stored in: $CL_SERVER_DIR/mqtt"
+        echo "📝 Config: $CL_SERVER_DIR/mqtt/config/mosquitto.conf"
+        echo "📋 Logs: $CL_SERVER_DIR/mqtt/log/mosquitto.log"
+        echo ""
+        echo "To stop: $SCRIPT_DIR/mqtt_broker_stop"
+        echo "To view logs: cd $MQTT_DIR && docker-compose logs -f mosquitto"
+        exit 0
+    fi
+    
+    attempt=$((attempt + 1))
+    sleep 2
+done
+
+echo "❌ MQTT Broker failed to start within 60 seconds"
+echo "Check logs with: cd $MQTT_DIR && docker-compose logs mosquitto"
+exit 1
