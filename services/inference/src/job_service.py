@@ -11,7 +11,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from .config import STORAGE_DIR
+from .config import STORAGE_DIR, QDRANT_URL
 from .models import Job, MediaStoreSyncStatus, QueueEntry
 from .queue import Queue
 from .schemas import JobResponse
@@ -31,6 +31,54 @@ class JobService:
         self.queue = Queue(db)
         self.storage_dir = Path(STORAGE_DIR)
 
+        # Initialize vector stores for cleanup operations
+        self.image_store = None
+        self.face_store = None
+
+        try:
+            from .inferences import QdrantImageStore
+            self.image_store = QdrantImageStore(url=QDRANT_URL, logger=logging.getLogger(__name__))
+        except Exception as e:
+            logging.getLogger(__name__).debug(f"Could not initialize image store: {e}")
+
+        try:
+            from .inferences import QdrantFaceStore
+            self.face_store = QdrantFaceStore(url=QDRANT_URL, logger=logging.getLogger(__name__))
+        except Exception as e:
+            logging.getLogger(__name__).debug(f"Could not initialize face store: {e}")
+
+    def _cleanup_job_vectors(self, job_id: str, task_type: str) -> None:
+        """
+        Delete all vectors associated with a job from the vector stores.
+
+        Args:
+            job_id: Job identifier
+            task_type: Type of task (image_embedding, face_detection, face_embedding)
+        """
+        try:
+            if task_type == "image_embedding" and self.image_store:
+                # For image embedding, delete using media_store_id as point_id
+                # We need to find the job first to get media_store_id
+                job = self.db.query(Job).filter_by(job_id=job_id).first()
+                if job:
+                    try:
+                        self.image_store.delete_vector(job.media_store_id)
+                        logging.getLogger(__name__).debug(
+                            f"Deleted image embedding for job {job_id}, media_store_id {job.media_store_id}"
+                        )
+                    except Exception as e:
+                        logging.getLogger(__name__).debug(f"Could not delete image vector: {e}")
+
+            elif task_type in ("face_detection", "face_embedding") and self.face_store:
+                # For face tasks, delete all faces for the job
+                try:
+                    self.face_store.delete_by_job_id(job_id)
+                    logging.getLogger(__name__).debug(f"Deleted all face embeddings for job {job_id}")
+                except Exception as e:
+                    logging.getLogger(__name__).debug(f"Could not delete face vectors: {e}")
+        except Exception as e:
+            logging.getLogger(__name__).debug(f"Error cleaning up vectors: {e}")
+
     def create_job(
         self,
         task_type: str,
@@ -40,6 +88,10 @@ class JobService:
     ) -> JobResponse:
         """
         Create a new inference job.
+
+        If a job already exists for the same media_store_id and task_type,
+        it will be deleted from the database and vector stores, and a new job
+        will be created (redo embedding feature).
 
         Args:
             task_type: Type of inference task
@@ -51,14 +103,14 @@ class JobService:
             JobResponse with job details
 
         Raises:
-            ValueError: If task_type is invalid or job already exists
+            ValueError: If task_type is invalid
         """
         # Validate task type
         valid_tasks = {"image_embedding", "face_detection", "face_embedding"}
         if task_type not in valid_tasks:
             raise ValueError(f"Invalid task_type. Must be one of {valid_tasks}")
 
-        # Check for duplicate
+        # Check for duplicate and delete if exists (redo embedding feature)
         existing = (
             self.db.query(Job)
             .filter_by(media_store_id=media_store_id, task_type=task_type)
@@ -66,9 +118,14 @@ class JobService:
             .first()
         )
         if existing:
-            raise ValueError(
-                f"Job already exists for media_store_id={media_store_id}, task_type={task_type}"
+            logging.getLogger(__name__).info(
+                f"Duplicate job found for media_store_id={media_store_id}, task_type={task_type}. "
+                f"Deleting old job {existing.job_id} and rerunning inference."
             )
+            # Delete vectors from vector stores
+            self._cleanup_job_vectors(existing.job_id, task_type)
+            # Delete the old job
+            self.delete_job(existing.job_id)
 
         # Create job
         job_id = str(uuid.uuid4())

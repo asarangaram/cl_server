@@ -34,6 +34,10 @@ async def create_job(
     """
     Create a new inference job.
 
+    If a job already exists for the same media_store_id and task_type (pending/processing),
+    the old job will be deleted from the database and vector stores, and a new job will
+    be created with the same media_store_id (redo embedding feature).
+
     Requires `ai_inference_support` permission.
 
     Args:
@@ -47,7 +51,6 @@ async def create_job(
 
     Raises:
         400: Invalid task_type or priority
-        409: Job already exists
     """
     service = JobService(db)
 
@@ -73,8 +76,6 @@ async def create_job(
         return job
 
     except ValueError as e:
-        if "already exists" in str(e):
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(e))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
