@@ -49,3 +49,19 @@ export 'src/auth/public_key_provider.dart';
 // Export media store client
 export 'src/media_store/media_store_client.dart';
 export 'src/media_store/file_uploader.dart';
+
+// Export inference client
+export 'src/inference/inference_client.dart';
+export 'src/inference/mqtt_event_listener.dart';
+
+// Export inference models
+export 'src/inference/models/job.dart';
+export 'src/inference/models/bounding_box.dart';
+export 'src/inference/models/face.dart';
+export 'src/inference/models/image_embedding_result.dart';
+export 'src/inference/models/face_detection_result.dart';
+export 'src/inference/models/face_embedding_result.dart';
+export 'src/inference/models/health_response.dart';
+export 'src/inference/models/stats_response.dart';
+export 'src/inference/models/cleanup_response.dart';
+export 'src/inference/models/mqtt_event.dart';

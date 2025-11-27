@@ -5,9 +5,13 @@ A comprehensive Dart client library for interacting with CL Server microservices
 ## Features
 
 - ✅ **Authentication Service Client** - Full support for user login, management, and permission handling
+- ✅ **Media Store Service Client** - Entity management, file uploads, versioning, and metadata
+- ✅ **Inference Service Client** - AI inference jobs (image embedding, face detection, face embedding)
+- ✅ **Real-time Notifications** - MQTT event listener for job completion notifications
 - 📦 **Type-Safe Models** - Strongly-typed Dart models for all API responses
 - 🔒 **JWT Token Parsing** - Decode and validate JWT tokens without external dependencies
 - 🌐 **RESTful API** - Clean, intuitive API for all endpoints
+- 📡 **Event Streaming** - Real-time MQTT support for inference job completion
 - 📝 **Comprehensive Tests** - Full integration test suite with real API calls
 - 💻 **CLI Example** - Interactive command-line tool demonstrating all features
 - 📚 **Well Documented** - Detailed examples and inline documentation
@@ -201,6 +205,110 @@ try {
 }
 ```
 
+## Inference Service API
+
+### Create Inference Job
+
+```dart
+final inferenceClient = InferenceClient(baseUrl: 'http://localhost:8001');
+
+try {
+  // Create an image embedding job
+  final job = await inferenceClient.createJob(
+    token: token.accessToken,
+    mediaStoreId: 'image_uuid',
+    taskType: 'image_embedding',
+    priority: 5,  // 0-10, higher is more urgent
+  );
+
+  print('Job created: ${job.jobId}');
+  print('Status: ${job.status}');
+} catch (e) {
+  print('Error creating job: $e');
+}
+```
+
+### Check Job Status
+
+```dart
+// Get job status (no token required - job_id acts as capability token)
+final job = await inferenceClient.getJob(jobId);
+
+print('Job Status: ${job.status}');
+if (job.status == 'completed') {
+  print('Results: ${job.result}');
+} else if (job.status == 'error') {
+  print('Error: ${job.errorMessage}');
+}
+```
+
+### Delete Job
+
+```dart
+// Delete a job (requires ai_inference_support permission)
+await inferenceClient.deleteJob(
+  token: token.accessToken,
+  jobId: jobId,
+);
+```
+
+### Monitor Job Completion with MQTT
+
+```dart
+final listener = MqttEventListener(
+  brokerAddress: 'localhost',
+  port: 1883,
+  clientId: 'dart_inference_${DateTime.now().millisecondsSinceEpoch}',
+  connectionTimeout: Duration(seconds: 10),
+);
+
+try {
+  // Connect and subscribe to job completion events
+  await listener.connect((event) {
+    print('Job ${event.jobId} event: ${event.event}');
+    print('Data: ${event.data}');
+    print('Timestamp: ${event.timestamp}');
+  });
+
+  // Listener is now active and will call the callback for each job completion
+
+  // Later, disconnect when done
+  await listener.disconnect();
+} catch (e) {
+  print('MQTT error: $e');
+}
+```
+
+### Admin Operations
+
+```dart
+// Get service health
+final health = await inferenceClient.healthCheck();
+print('Status: ${health.status}');
+print('Database: ${health.database}');
+print('Queue Size: ${health.queueSize}');
+
+// Get service statistics (admin only)
+final stats = await inferenceClient.getStats(token: adminToken);
+print('Pending jobs: ${stats.jobs['pending']}');
+print('Completed jobs: ${stats.jobs['completed']}');
+
+// Cleanup old jobs (admin only)
+final cleanup = await inferenceClient.cleanup(
+  token: adminToken,
+  olderThanSeconds: 86400,  // 1 day
+  status: 'completed',
+  removeResults: true,
+);
+print('Deleted: ${cleanup.jobsDeleted} jobs');
+```
+
+## Inference Service Supported Task Types
+
+- **image_embedding** - Generate 512-dimensional CLIP embeddings for images
+- **face_detection** - Detect faces in images with bounding boxes and landmarks
+- **face_embedding** - Generate embeddings for detected faces
+
 ## Example CLI Application
 
 Run the interactive CLI example:
@@ -279,20 +387,27 @@ The client parses JWT tokens but does NOT verify ES256 signatures. Instead:
 
 ## Dependencies
 
+### Required
 - `http: ^1.1.0` - HTTP client
 - `crypto: ^3.0.0` - Cryptographic operations
-- `dart_jsonwebtoken: ^2.10.0` - JWT parsing (minimal dependency)
+- `dart_jsonwebtoken: ^2.10.0` - JWT parsing
 
-Development only:
+### Optional
+- `mqtt5_client: ^4.0.0` - MQTT client for real-time event notifications (inference service only)
+
+### Development only
 - `test: ^1.25.0` - Test framework
+- `lints: ^2.1.0` - Lint rules
 
 ## Roadmap
 
-- Phase 1 ✅ - Authentication Service
-- Phase 2 🔄 - Media Store Service
-- Phase 3 🔄 - Inference Service
+- Phase 1 ✅ - Authentication Service - Complete with user management and permissions
+- Phase 2 ✅ - Media Store Service - Complete with entity management, file uploads, versioning
+- Phase 3 ✅ - Inference Service - Complete with job management, MQTT real-time notifications
 - Support for signature verification (ES256)
 - Support for token refresh
+- Integration tests for inference service
+- WebSocket support as alternative to MQTT
 
 ## Contributing
 

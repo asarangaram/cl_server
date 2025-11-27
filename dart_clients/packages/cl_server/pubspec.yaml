@@ -10,6 +10,7 @@ dependencies:
   http: ^1.1.0
   crypto: ^3.0.0
   dart_jsonwebtoken: ^2.10.0
+  mqtt5_client: ^4.0.0
 
 dev_dependencies:
   test: ^1.25.0

@@ -121,14 +121,27 @@ class CLHttpClient {
   Future<dynamic> delete(
     String path, {
     String? token,
+    dynamic body,
   }) async {
     final uri = _buildUri(path);
     final headers = _buildHeaders(token: token);
 
     try {
-      final response = await _httpClient
-          .delete(uri, headers: headers)
-          .timeout(requestTimeout);
+      http.Response response;
+
+      if (body != null) {
+        final bodyStr = body is String ? body : jsonEncode(body);
+        // Use a custom DELETE request with body
+        final request = http.Request('DELETE', uri)
+          ..headers.addAll(headers)
+          ..body = bodyStr;
+        response = await _httpClient.send(request).then(http.Response.fromStream).timeout(requestTimeout);
+      } else {
+        response = await _httpClient
+            .delete(uri, headers: headers)
+            .timeout(requestTimeout);
+      }
+
       return _handleResponse(response);
     } catch (e) {
       throw _handleError(e);
