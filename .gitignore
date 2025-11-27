@@ -54,3 +54,12 @@ test_artifacts/**
 data/**
 demos/images/**
 services/data/**
+
+# Dart / Flutter specific
+.dart_tool/
+.packages
+build/
+*.iml
+.pub-cache/
+.pub/
+pubspec.lock

@@ -1,0 +1,16 @@
+name: cl_server
+description: Dart client library for CL Server microservices (authentication, media store, inference).
+version: 0.1.0
+publish_to: 'https://pub.dev'
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  http: ^1.1.0
+  crypto: ^3.0.0
+  dart_jsonwebtoken: ^2.10.0
+
+dev_dependencies:
+  test: ^1.25.0
+  lints: ^2.1.0
