@@ -63,3 +63,4 @@ build/
 .pub-cache/
 .pub/
 pubspec.lock
+**/.DS_Store
