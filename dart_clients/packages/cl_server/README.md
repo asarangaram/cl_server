@@ -78,111 +78,83 @@ void main() async {
 }
 ```
 
-## Authentication API
+## Common Usage Patterns
 
-### Login
+### Authentication
 
 ```dart
+// Login
 final token = await client.login('username', 'password');
-// Returns: Token with accessToken and tokenType
-```
 
-### Get Current User
-
-```dart
+// Get current user
 final user = await client.getCurrentUser(token.accessToken);
-// Returns: User object with id, username, isAdmin, isActive, createdAt, permissions
-```
 
-### Manage Users (Admin Only)
-
-```dart
-// Create user
+// Create user (admin only)
 final newUser = await client.createUser(
   token: adminToken,
   username: 'newuser',
   password: 'secure_password',
-  isAdmin: false,
   permissions: ['read', 'write'],
 );
 
-// List users
-final users = await client.listUsers(
-  token: adminToken,
-  skip: 0,
-  limit: 100,
+// List users (admin only)
+final users = await client.listUsers(token: adminToken);
+```
+
+### Media Store
+
+```dart
+// Create a collection
+final collection = await mediaClient.createCollection(
+  token: token.accessToken,
+  label: 'My Photos',
+  description: 'Family photos',
 );
 
-// Get specific user
-final user = await client.getUser(
-  token: adminToken,
-  userId: 5,
+// Upload a file
+final imageFile = File('photo.jpg');
+final entity = await mediaClient.createEntity(
+  token: token.accessToken,
+  label: 'Vacation Photo',
+  file: imageFile,
+  parentId: collection.id,
 );
 
-// Update user
-final updated = await client.updateUser(
-  token: adminToken,
-  userId: 5,
-  password: 'new_password',
-  isAdmin: true,
-  permissions: ['read', 'write', 'delete'],
-);
-
-// Delete user
-await client.deleteUser(
-  token: adminToken,
-  userId: 5,
+// List entities
+final result = await mediaClient.listEntities(
+  token: token.accessToken,
+  page: 1,
+  pageSize: 20,
 );
 ```
 
-## Token Management
-
-### Parse Token
+### Inference Service
 
 ```dart
-final tokenData = client.parseToken(token.accessToken);
-// Returns: TokenData with userId, permissions, isAdmin, expiresAt
+// Create an inference job
+final job = await inferenceClient.createJob(
+  token: token.accessToken,
+  mediaStoreId: 'image_uuid',
+  taskType: 'image_embedding',
+  priority: 5,
+);
 
-print(tokenData.userId);        // User ID
-print(tokenData.permissions);   // List of permission strings
-print(tokenData.isAdmin);       // Boolean
-print(tokenData.expiresAt);     // DateTime
-print(tokenData.isExpired);     // Check if expired
-print(tokenData.remainingDuration); // Duration until expiration
-```
-
-### Check Token Expiration
-
-```dart
-if (client.isTokenExpired(token.accessToken)) {
-  print('Token has expired, please login again');
+// Check job status
+final updatedJob = await inferenceClient.getJob(job.jobId);
+if (updatedJob.status == 'completed') {
+  print('Results: ${updatedJob.result}');
 }
-```
 
-### Permission Checking
+// Monitor with MQTT
+final listener = MqttEventListener(
+  brokerAddress: 'localhost',
+  port: 1883,
+);
 
-```dart
-final tokenData = client.parseToken(token.accessToken);
-
-if (tokenData.hasPermission('read')) {
-  // User has read permission
-}
-```
-
-### Save/Load Tokens (Stateless Design)
-
-Since the library uses a stateless design, your application is responsible for token persistence:
-
-```dart
-import 'dart:io';
-
-// Save token to file
-final file = File('token.txt');
-await file.writeAsString(token.accessToken);
-
-// Load token from file
-final savedToken = await file.readAsString();
-final user = await client.getCurrentUser(savedToken);
+await listener.connect((event) {
+  print('Job ${event.jobId} completed!');
+  print('Data: ${event.data}');
+});
 ```
 
 ## Error Handling
@@ -205,105 +177,33 @@ try {
 }
 ```
 
-## Inference Service API
-
-### Create Inference Job
+## Token Management
 
 ```dart
-final inferenceClient = InferenceClient(baseUrl: 'http://localhost:8001');
+// Parse token to check permissions
+final tokenData = client.parseToken(token.accessToken);
 
-try {
-  // Create an image embedding job
-  final job = await inferenceClient.createJob(
-    token: token.accessToken,
-    mediaStoreId: 'image_uuid',
-    taskType: 'image_embedding',
-    priority: 5,  // 0-10, higher is more urgent
-  );
-
-  print('Job created: ${job.jobId}');
-  print('Status: ${job.status}');
-} catch (e) {
-  print('Error creating job: $e');
+if (tokenData.hasPermission('ai_inference_support')) {
+  // User can create inference jobs
 }
-```
 
-### Check Job Status
-
-```dart
-// Get job status (no token required - job_id acts as capability token)
-final job = await inferenceClient.getJob(jobId);
-
-print('Job Status: ${job.status}');
-if (job.status == 'completed') {
-  print('Results: ${job.result}');
-} else if (job.status == 'error') {
-  print('Error: ${job.errorMessage}');
+if (tokenData.isExpired) {
+  print('Token expired, please login again');
 }
+
+// Save/load tokens (application responsibility)
+import 'dart:io';
+
+// Save token
+final file = File('token.txt');
+await file.writeAsString(token.accessToken);
+
+// Load token
+final savedToken = await file.readAsString();
+final user = await client.getCurrentUser(savedToken);
 ```
 
-### Delete Job
-
-```dart
-// Delete a job (requires ai_inference_support permission)
-await inferenceClient.deleteJob(
-  token: token.accessToken,
-  jobId: jobId,
-);
-```
-
-### Monitor Job Completion with MQTT
-
-```dart
-final listener = MqttEventListener(
-  brokerAddress: 'localhost',
-  port: 1883,
-  clientId: 'dart_inference_${DateTime.now().millisecondsSinceEpoch}',
-  connectionTimeout: Duration(seconds: 10),
-);
-
-try {
-  // Connect and subscribe to job completion events
-  await listener.connect((event) {
-    print('Job ${event.jobId} event: ${event.event}');
-    print('Data: ${event.data}');
-    print('Timestamp: ${event.timestamp}');
-  });
-
-  // Listener is now active and will call the callback for each job completion
-
-  // Later, disconnect when done
-  await listener.disconnect();
-} catch (e) {
-  print('MQTT error: $e');
-}
-```
-
-### Admin Operations
-
-```dart
-// Get service health
-final health = await inferenceClient.healthCheck();
-print('Status: ${health.status}');
-print('Database: ${health.database}');
-print('Queue Size: ${health.queueSize}');
-
-// Get service statistics (admin only)
-final stats = await inferenceClient.getStats(token: adminToken);
-print('Pending jobs: ${stats.jobs['pending']}');
-print('Completed jobs: ${stats.jobs['completed']}');
-
-// Cleanup old jobs (admin only)
-final cleanup = await inferenceClient.cleanup(
-  token: adminToken,
-  olderThanSeconds: 86400,  // 1 day
-  status: 'completed',
-  removeResults: true,
-);
-print('Deleted: ${cleanup.jobsDeleted} jobs');
-```
-
-## Inference Service Supported Task Types
+## Supported Inference Tasks
 
 - **image_embedding** - Generate 512-dimensional CLIP embeddings for images
 - **face_detection** - Detect faces in images with bounding boxes and landmarks
@@ -323,14 +223,9 @@ Available commands:
 - `whoami` - Show current user
 - `logout` - Clear session
 - `token-info` - Display token details
-- `save-token <file>` - Save token to file
-- `load-token <file>` - Load token from file
 - `users list` - List all users
-- `users get <id>` - Get user details
 - `users create <name> <password>` - Create user
-- `users update <id> [--admin] [--perms]` - Update user
-- `users delete <id>` - Delete user
-- `public-key` - Fetch public key
+- And more...
 
 ## Testing
 
@@ -345,45 +240,14 @@ dart test test/integration/
 
 # Run specific test file
 dart test test/integration/auth_login_test.dart
-
-# Watch mode
-dart test --watch test/integration/
 ```
 
-## Architecture
+## Documentation
 
-### Stateless Design
-
-The `AuthClient` is intentionally stateless:
-- No internal token storage
-- Application passes token with each request
-- Full control over token lifecycle
-- No side effects or hidden state
-
-Example pattern:
-```dart
-// 1. Get token
-final token = await client.login(username, password);
-
-// 2. Store it (app responsibility)
-localStorage.save('auth_token', token.accessToken);
-
-// 3. Use it for requests
-final user = await client.getCurrentUser(token.accessToken);
-
-// 4. Check expiration when needed
-if (client.isTokenExpired(token.accessToken)) {
-  // Re-login
-}
-```
-
-### No Signature Verification
-
-The client parses JWT tokens but does NOT verify ES256 signatures. Instead:
-- Tokens are decoded for claims inspection (userId, permissions, isAdmin, expiresAt)
-- Server is trusted as the source of truth for token validity
-- HTTPS is used for transport security
-- Can be extended later if signature verification is needed
+- **[API Reference](doc/API.md)** - Complete API documentation for all services
+- **[INTERNALS.md](INTERNALS.md)** - Architecture and design decisions
+- **[QUICK_START.md](QUICK_START.md)** - 5-minute quick start guide
+- **[IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)** - Technical implementation details
 
 ## Dependencies
 
@@ -399,15 +263,26 @@ The client parses JWT tokens but does NOT verify ES256 signatures. Instead:
 - `test: ^1.25.0` - Test framework
 - `lints: ^2.1.0` - Lint rules
 
+## Service URLs
+
+Default local development URLs:
+
+| Service | Port | URL |
+|---------|------|-----|
+| Authentication | 8002 | http://localhost:8002 |
+| Media Store | 8000 | http://localhost:8000 |
+| Inference | 8001 | http://localhost:8001 |
+| MQTT Broker | 1883 | localhost:1883 |
+
 ## Roadmap
 
-- Phase 1 ✅ - Authentication Service - Complete with user management and permissions
-- Phase 2 ✅ - Media Store Service - Complete with entity management, file uploads, versioning
-- Phase 3 ✅ - Inference Service - Complete with job management, MQTT real-time notifications
-- Support for signature verification (ES256)
-- Support for token refresh
-- Integration tests for inference service
+- Phase 1 ✅ - Authentication Service - Complete
+- Phase 2 ✅ - Media Store Service - Complete
+- Phase 3 ✅ - Inference Service - Complete
+- Token refresh support
+- Signature verification (ES256)
 - WebSocket support as alternative to MQTT
+- Streaming file uploads
 
 ## Contributing
 
