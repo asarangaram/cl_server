@@ -64,3 +64,4 @@ build/
 .pub/
 pubspec.lock
 **/.DS_Store
+.obsidian/**
