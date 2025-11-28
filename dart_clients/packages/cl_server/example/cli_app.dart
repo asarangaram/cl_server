@@ -13,8 +13,10 @@ void main() async {
   final mediaPort = _parseArg('--media-port', '8001');
 
   final authClient = AuthClient(baseUrl: 'http://$authHost:$authPort');
-  final mediaStoreClient = MediaStoreClient(baseUrl: 'http://$mediaHost:$mediaPort');
+  final mediaStoreClient =
+      MediaStoreClient(baseUrl: 'http://$mediaHost:$mediaPort');
   var currentToken = '';
+  // ignore: unused_local_variable
   var currentUser = null;
 
   print('💡 Type "help" for available commands\n');
@@ -80,7 +82,8 @@ void main() async {
             print('   Admin: ${tokenData.isAdmin}');
             print('   Permissions: ${tokenData.permissions.join(', ')}');
             print('   Expired: ${tokenData.isExpired}');
-            print('   Remaining: ${tokenData.remainingDuration.inMinutes} minutes');
+            print(
+                '   Remaining: ${tokenData.remainingDuration.inMinutes} minutes');
             print('   Expires: ${tokenData.expiresAt.toLocal()}');
 
           case 'save-token':
@@ -113,7 +116,8 @@ void main() async {
               print('⚠️  Token has expired!');
             } else {
               print('✅ Token loaded from ${args[0]}');
-              print('   Expires in: ${tokenData.remainingDuration.inMinutes} minutes');
+              print(
+                  '   Expires in: ${tokenData.remainingDuration.inMinutes} minutes');
             }
 
           case 'public-key':
@@ -134,7 +138,8 @@ void main() async {
 
           case 'media':
             if (args.isEmpty) {
-              print('❌ Usage: media <list|get|create-collection|upload|patch|delete|versions|config-get|config-set>');
+              print(
+                  '❌ Usage: media <list|get|create-collection|upload|patch|delete|versions|config-get|config-set>');
               continue;
             }
             if (currentToken.isEmpty) {
@@ -150,7 +155,8 @@ void main() async {
             exit(0);
 
           default:
-            print('❌ Unknown command: $command. Type "help" for available commands.');
+            print(
+                '❌ Unknown command: $command. Type "help" for available commands.');
         }
       } catch (e) {
         if (e is AuthenticationException) {
@@ -245,7 +251,8 @@ Future<void> _handleMediaCommand(
       print('✅ Entities (${entities.length} shown):');
       for (final entity in entities) {
         final type = entity.isCollection ? '📁' : '📄';
-        print('   $type [${entity.id}] ${entity.label} (${entity.isDeleted == true ? 'deleted' : 'active'})');
+        print(
+            '   $type [${entity.id}] ${entity.label} (${entity.isDeleted == true ? 'deleted' : 'active'})');
       }
 
     case 'get':
@@ -283,7 +290,8 @@ Future<void> _handleMediaCommand(
 
     case 'upload':
       if (subargs.isEmpty) {
-        print('❌ Usage: media upload <filepath> [--name NAME] [--desc DESC] [--parent PARENT_ID]');
+        print(
+            '❌ Usage: media upload <filepath> [--name NAME] [--desc DESC] [--parent PARENT_ID]');
         return;
       }
       final filepath = subargs[0];
@@ -292,7 +300,8 @@ Future<void> _handleMediaCommand(
         print('❌ File not found: $filepath');
         return;
       }
-      final name = _getArgValue(subargs, '--name', null) ?? file.path.split('/').last;
+      final name =
+          _getArgValue(subargs, '--name', null) ?? file.path.split('/').last;
       final desc = _getArgValue(subargs, '--desc', null);
       final parentStr = _getArgValue(subargs, '--parent', null);
       final parentId = parentStr != null ? int.tryParse(parentStr) : null;
@@ -304,11 +313,13 @@ Future<void> _handleMediaCommand(
         description: desc,
         parentId: parentId,
       );
-      print('✅ File uploaded: ID=${uploaded.id}, Size=${uploaded.fileSize} bytes');
+      print(
+          '✅ File uploaded: ID=${uploaded.id}, Size=${uploaded.fileSize} bytes');
 
     case 'patch':
       if (subargs.isEmpty) {
-        print('❌ Usage: media patch <entity_id> [--label LABEL] [--desc DESC] [--parent PARENT_ID]');
+        print(
+            '❌ Usage: media patch <entity_id> [--label LABEL] [--desc DESC] [--parent PARENT_ID]');
         return;
       }
       final entityId = int.tryParse(subargs[0]);
@@ -353,7 +364,8 @@ Future<void> _handleMediaCommand(
         print('❌ Invalid entity ID');
         return;
       }
-      final versions = await client.getVersions(token: token, entityId: entityId);
+      final versions =
+          await client.getVersions(token: token, entityId: entityId);
       print('✅ Versions (${versions.length} total):');
       for (int i = 0; i < versions.length; i++) {
         final v = versions[i];
@@ -372,7 +384,8 @@ Future<void> _handleMediaCommand(
         return;
       }
       final enabled = subargs[0].toLowerCase() == 'true';
-      final config = await client.setReadAuth(token: token, readAuthEnabled: enabled);
+      final config =
+          await client.setReadAuth(token: token, readAuthEnabled: enabled);
       print('✅ Config updated: read_auth_enabled=${config.readAuthEnabled}');
 
     default:
@@ -394,10 +407,12 @@ Future<void> _handleUsersCommand(
       final limitStr = _getArgValue(subargs, '--limit', '100') ?? '100';
       final skip = int.tryParse(skipStr) ?? 0;
       final limit = int.tryParse(limitStr) ?? 100;
-      final users = await client.listUsers(token: token, skip: skip, limit: limit);
+      final users =
+          await client.listUsers(token: token, skip: skip, limit: limit);
       print('✅ Users (${users.length} shown):');
       for (final user in users) {
-        print('   [${user.id}] ${user.username} (admin: ${user.isAdmin}, active: ${user.isActive})');
+        print(
+            '   [${user.id}] ${user.username} (admin: ${user.isAdmin}, active: ${user.isActive})');
       }
 
     case 'get':
@@ -421,13 +436,15 @@ Future<void> _handleUsersCommand(
 
     case 'create':
       if (subargs.isEmpty) {
-        print('❌ Usage: users create <username> <password> [--admin] [--perms P1,P2]');
+        print(
+            '❌ Usage: users create <username> <password> [--admin] [--perms P1,P2]');
         return;
       }
       final username = subargs[0];
       final password = subargs.length > 1 ? subargs[1] : '';
       if (password.isEmpty) {
-        print('❌ Usage: users create <username> <password> [--admin] [--perms P1,P2]');
+        print(
+            '❌ Usage: users create <username> <password> [--admin] [--perms P1,P2]');
         return;
       }
       final isAdmin = _hasArg(subargs, '--admin');
@@ -445,7 +462,8 @@ Future<void> _handleUsersCommand(
 
     case 'update':
       if (subargs.isEmpty) {
-        print('❌ Usage: users update <user_id> [--pass P] [--admin true|false] [--perms P1,P2]');
+        print(
+            '❌ Usage: users update <user_id> [--pass P] [--admin true|false] [--perms P1,P2]');
         return;
       }
       final userId = int.tryParse(subargs[0]);
@@ -455,7 +473,8 @@ Future<void> _handleUsersCommand(
       }
       final password = _getArgValue(subargs, '--pass', null);
       final adminStr = _getArgValue(subargs, '--admin', null);
-      final isAdmin = adminStr != null ? adminStr.toLowerCase() == 'true' : null;
+      final isAdmin =
+          adminStr != null ? adminStr.toLowerCase() == 'true' : null;
       final permsStr = _getArgValue(subargs, '--perms', null);
       final permissions = permsStr != null ? permsStr.split(',') : null;
 
@@ -506,10 +525,7 @@ String _parseArg(String flag, String defaultValue) {
     }
   }
   // Try from command line
+  // ignore: unused_local_variable
   final index = Platform.script.toString().indexOf(flag);
   return defaultValue;
-}
-
-class _InputController {
-  // Placeholder for future enhancements
 }

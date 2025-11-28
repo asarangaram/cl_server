@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../core/http_client.dart';
 import '../core/models/entity.dart';
-import '../core/models/pagination.dart';
 import '../core/models/config.dart';
 import '../core/exceptions.dart';
 import 'file_uploader.dart';
@@ -18,15 +17,17 @@ class MediaStoreClient {
     required String baseUrl,
     CLHttpClient? httpClient,
     Duration? requestTimeout,
-  })  : _httpClient = httpClient ?? CLHttpClient(
-          baseUrl: baseUrl,
-          requestTimeout: requestTimeout ?? const Duration(seconds: 30),
-        ),
+  })  : _httpClient = httpClient ??
+            CLHttpClient(
+              baseUrl: baseUrl,
+              requestTimeout: requestTimeout ?? const Duration(seconds: 30),
+            ),
         _fileUploader = FileUploader(
-          httpClient ?? CLHttpClient(
-            baseUrl: baseUrl,
-            requestTimeout: requestTimeout ?? const Duration(seconds: 30),
-          ),
+          httpClient ??
+              CLHttpClient(
+                baseUrl: baseUrl,
+                requestTimeout: requestTimeout ?? const Duration(seconds: 30),
+              ),
         );
 
   // ============================================================
@@ -52,7 +53,8 @@ class MediaStoreClient {
 
       // Encode as form-urlencoded
       final bodyStr = body.entries
-          .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+          .map((e) =>
+              '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
           .join('&');
 
       final response = await _httpClient.post(
@@ -67,13 +69,15 @@ class MediaStoreClient {
           return Entity.fromJson(response);
         } catch (parseError) {
           throw ValidationException(
-            message: 'Failed to parse collection response: $parseError. Response: $response',
+            message:
+                'Failed to parse collection response: $parseError. Response: $response',
           );
         }
       }
 
       throw ValidationException(
-        message: 'Unexpected response format for collection creation: $response',
+        message:
+            'Unexpected response format for collection creation: $response',
       );
     } catch (e) {
       if (e is CLServerException) {
@@ -106,19 +110,14 @@ class MediaStoreClient {
         isCollection: false,
       );
 
-      if (response is Map<String, dynamic>) {
-        try {
-          return Entity.fromJson(response);
-        } catch (parseError) {
-          throw ValidationException(
-            message: 'Failed to parse entity response: $parseError. Response: $response',
-          );
-        }
+      try {
+        return Entity.fromJson(response);
+      } catch (parseError) {
+        throw ValidationException(
+          message:
+              'Failed to parse entity response: $parseError. Response: $response',
+        );
       }
-
-      throw ValidationException(
-        message: 'Unexpected response format for entity creation: $response',
-      );
     } catch (e) {
       if (e is CLServerException) {
         rethrow;
@@ -248,9 +247,7 @@ class MediaStoreClient {
           method: 'PUT',
         );
 
-        if (response is Map<String, dynamic>) {
-          return Entity.fromJson(response);
-        }
+        return Entity.fromJson(response);
       } else {
         // Update without file - send as multipart form-data (no file)
         final uri = Uri.parse('${_httpClient.baseUrl}/entity/$entityId');
@@ -266,8 +263,8 @@ class MediaStoreClient {
           request.fields['parent_id'] = parentId.toString();
         }
 
-        final streamedResponse = await request.send()
-            .timeout(_httpClient.requestTimeout ?? const Duration(seconds: 30));
+        final streamedResponse =
+            await request.send().timeout(_httpClient.requestTimeout);
 
         final responseBody = await streamedResponse.stream.bytesToString();
 
@@ -460,26 +457,24 @@ class MediaStoreClient {
 
       if (response is List) {
         try {
-          return response
-              .map((versionData) {
-                // Version metadata response contains minimal fields
-                // Add required defaults so Entity.fromJson doesn't fail
-                final data = versionData as Map<String, dynamic>;
+          return response.map((versionData) {
+            // Version metadata response contains minimal fields
+            // Add required defaults so Entity.fromJson doesn't fail
+            final data = versionData as Map<String, dynamic>;
 
-                // Ensure required fields for Entity parsing
-                if (!data.containsKey('id')) {
-                  data['id'] = entityId;
-                }
-                if (!data.containsKey('is_collection')) {
-                  data['is_collection'] = false; // Default for version data
-                }
-                if (!data.containsKey('label')) {
-                  data['label'] = 'Version ${data['version'] ?? 'unknown'}';
-                }
+            // Ensure required fields for Entity parsing
+            if (!data.containsKey('id')) {
+              data['id'] = entityId;
+            }
+            if (!data.containsKey('is_collection')) {
+              data['is_collection'] = false; // Default for version data
+            }
+            if (!data.containsKey('label')) {
+              data['label'] = 'Version ${data['version'] ?? 'unknown'}';
+            }
 
-                return Entity.fromJson(data);
-              })
-              .toList();
+            return Entity.fromJson(data);
+          }).toList();
         } catch (e) {
           throw ValidationException(
             message: 'Failed to parse version data: $e',
@@ -637,7 +632,8 @@ class MediaStoreClient {
   void _handleErrorResponse(int statusCode, String responseBody) {
     try {
       final errorData = jsonDecode(responseBody);
-      if (errorData is Map<String, dynamic> && errorData.containsKey('detail')) {
+      if (errorData is Map<String, dynamic> &&
+          errorData.containsKey('detail')) {
         throw CLServerException(
           message: errorData['detail'] ?? 'Unknown error',
           statusCode: statusCode,

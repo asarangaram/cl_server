@@ -44,8 +44,8 @@ class FileUploader {
       );
 
       // Send request
-      final streamedResponse = await request.send()
-          .timeout(_httpClient.requestTimeout ?? const Duration(seconds: 30));
+      final streamedResponse =
+          await request.send().timeout(_httpClient.requestTimeout);
 
       // Read response
       final responseBody = await streamedResponse.stream.bytesToString();

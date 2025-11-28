@@ -5,9 +5,6 @@ import 'dart:math';
 import 'package:cl_server/cl_server.dart';
 import '../fixtures/test_image_loader.dart';
 
-// Import MQTT listener from inference client
-import 'package:cl_server/src/inference/mqtt_event_listener.dart';
-
 /// Test configuration for image embedding workflow tests
 class ImageEmbeddingTestConfig {
   final String authBaseUrl;
@@ -244,17 +241,17 @@ class ImageEmbeddingTestHelper {
           }
 
           final elapsed = DateTime.now().difference(startTime);
-          if (elapsed > maxDuration!) {
+          if (elapsed > maxDuration) {
             return null;
           }
 
-          await Future.delayed(pollInterval!);
+          await Future.delayed(pollInterval);
         } catch (e) {
           final elapsed = DateTime.now().difference(startTime);
-          if (elapsed > maxDuration!) {
+          if (elapsed > maxDuration) {
             return null;
           }
-          await Future.delayed(pollInterval!);
+          await Future.delayed(pollInterval);
         }
       }
     }
@@ -269,6 +266,7 @@ class ImageEmbeddingTestHelper {
     required Duration timeout,
   }) async {
     try {
+      // ignore: unused_local_variable
       late Job completedJob;
       late Completer<Job?> completer;
 
@@ -380,8 +378,7 @@ class ImageEmbeddingTestHelper {
 
 /// Context for managing test resources (images, jobs, media)
 class ImageEmbeddingTestContext {
-  final Map<String, String> uploadedMedia =
-      {}; // jobId -> mediaStoreId mapping
+  final Map<String, String> uploadedMedia = {}; // jobId -> mediaStoreId mapping
   final List<String> createdJobs = [];
   final ImageEmbeddingTestHelper helper;
 

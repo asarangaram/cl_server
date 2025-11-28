@@ -1,7 +1,6 @@
 import 'package:test/test.dart';
 import 'package:cl_server/cl_server.dart';
 import 'dart:io';
-import 'dart:convert';
 import 'package:crypto/crypto.dart';
 
 /// Create a unique copy of a fixture file with modified content to avoid MD5 duplicate detection
@@ -13,7 +12,8 @@ Future<File> createUniqueTestFile(String fixtureFile, String testName) async {
 
   final bytes = await fixture.readAsBytes();
   final timestamp = DateTime.now().millisecondsSinceEpoch;
-  final uniquePath = fixtureFile.replaceFirst(RegExp(r'\.([^.]+)$'), '_$testName\_$timestamp.\$1');
+  final uniquePath = fixtureFile.replaceFirst(
+      RegExp(r'\.([^.]+)$'), '_$testName\_$timestamp.\$1');
 
   // Modify the content slightly to create a unique MD5
   // Add a unique metadata comment at the end (works for image formats)
@@ -338,7 +338,8 @@ void main() {
       // MD5 should be different
       expect(updated.md5, isNot(equals(initialMd5)));
       // MIME type should contain video
-      expect(updated.mimeType, anyOf(contains('video'), contains('octet-stream')));
+      expect(
+          updated.mimeType, anyOf(contains('video'), contains('octet-stream')));
 
       // Clean up
       await uniquePng.delete();
@@ -360,6 +361,7 @@ void main() {
         parentId: collection.id,
       );
 
+      // ignore: unused_local_variable
       final filePath = entity.filePath;
 
       // Delete entity
@@ -441,7 +443,8 @@ void main() {
         expect(png.mimeType, contains('png'));
         expect(mp4.extension, equals('mp4'));
       },
-      skip: 'Test isolation: fixture files reused across tests cause duplicate detection',
+      skip:
+          'Test isolation: fixture files reused across tests cause duplicate detection',
     );
 
     test('Upload file to nested collection', () async {

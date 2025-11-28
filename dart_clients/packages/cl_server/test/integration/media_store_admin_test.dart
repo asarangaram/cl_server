@@ -5,6 +5,7 @@ void main() {
   late AuthClient authClient;
   late MediaStoreClient mediaStoreClient;
   late String adminToken;
+  // ignore: unused_local_variable
   late String regularUserToken;
 
   setUpAll(() async {
@@ -129,10 +130,12 @@ void main() {
       );
 
       // Timestamp should be updated (if service tracks it)
-      expect(after.updatedAt, anyOf(
-        isNull,
-        isA<int>(),
-      ));
+      expect(
+          after.updatedAt,
+          anyOf(
+            isNull,
+            isA<int>(),
+          ));
     });
 
     test('Configuration tracks who made the change', () async {
@@ -163,7 +166,8 @@ void main() {
           readAuthEnabled: !config.readAuthEnabled,
         );
 
-        expect(config.readAuthEnabled, isNot(equals(initialState == (i % 2 == 0))));
+        expect(config.readAuthEnabled,
+            isNot(equals(initialState == (i % 2 == 0))));
       }
     });
 

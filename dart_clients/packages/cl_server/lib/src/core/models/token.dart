@@ -1,5 +1,3 @@
-import 'token_data.dart';
-
 /// JWT token response from login endpoint
 class Token {
   final String accessToken;
@@ -27,5 +25,6 @@ class Token {
   }
 
   @override
-  String toString() => 'Token(type: $tokenType, token: ${accessToken.substring(0, 20)}...)';
+  String toString() =>
+      'Token(type: $tokenType, token: ${accessToken.substring(0, 20)}...)';
 }

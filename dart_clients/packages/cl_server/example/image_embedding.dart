@@ -53,7 +53,8 @@ void main(List<String> args) async {
     // Validate configuration
     if (noMqtt && noPolling) {
       print('❌ Error: Cannot disable both MQTT and polling');
-      print('   Use either --no-mqtt (polling only) or --no-polling (MQTT only), not both');
+      print(
+          '   Use either --no-mqtt (polling only) or --no-polling (MQTT only), not both');
       exit(1);
     }
 
@@ -62,10 +63,8 @@ void main(List<String> args) async {
     final authPort = _getArgValue(args, '--auth-port') ?? '8000';
     final mediaHost = _getArgValue(args, '--media-host') ?? 'localhost';
     final mediaPort = _getArgValue(args, '--media-port') ?? '8001';
-    final inferenceHost =
-        _getArgValue(args, '--inference-host') ?? 'localhost';
-    final inferencePort =
-        _getArgValue(args, '--inference-port') ?? '8002';
+    final inferenceHost = _getArgValue(args, '--inference-host') ?? 'localhost';
+    final inferencePort = _getArgValue(args, '--inference-port') ?? '8002';
 
     // Validate required arguments
     if (username == null || password == null || imagePath == null) {
@@ -192,12 +191,15 @@ void main(List<String> args) async {
       }
     }
 
-    print('   Created: ${DateTime.fromMillisecondsSinceEpoch(completionResult.createdAt).toLocal()}');
+    print(
+        '   Created: ${DateTime.fromMillisecondsSinceEpoch(completionResult.createdAt).toLocal()}');
     if (completionResult.startedAt != null) {
-      print('   Started: ${DateTime.fromMillisecondsSinceEpoch(completionResult.startedAt!).toLocal()}');
+      print(
+          '   Started: ${DateTime.fromMillisecondsSinceEpoch(completionResult.startedAt!).toLocal()}');
     }
     if (completionResult.completedAt != null) {
-      print('   Completed: ${DateTime.fromMillisecondsSinceEpoch(completionResult.completedAt!).toLocal()}');
+      print(
+          '   Completed: ${DateTime.fromMillisecondsSinceEpoch(completionResult.completedAt!).toLocal()}');
     }
 
     print('\n✨ Image embedding workflow completed successfully!\n');
@@ -209,9 +211,11 @@ void main(List<String> args) async {
         print('   Details: ${e.responseBody}');
       }
     } else if (e is AuthenticationException) {
-      print('   Authentication failed. Please check your username and password.');
+      print(
+          '   Authentication failed. Please check your username and password.');
     } else if (e is AuthorizationException) {
-      print('   Authorization failed. You may not have permission for this operation.');
+      print(
+          '   Authorization failed. You may not have permission for this operation.');
     } else if (e is NotFoundException) {
       print('   Resource not found.');
     }
@@ -314,7 +318,8 @@ Future<bool?> _waitForMqttCompletion({
   MqttServerClient? client;
   try {
     // Create MQTT client
-    client = MqttServerClient.withPort(brokerAddress, 'image_embedding_${DateTime.now().millisecondsSinceEpoch}', brokerPort);
+    client = MqttServerClient.withPort(brokerAddress,
+        'image_embedding_${DateTime.now().millisecondsSinceEpoch}', brokerPort);
 
     // Set up callbacks
     client.onConnected = () {
@@ -342,7 +347,7 @@ Future<bool?> _waitForMqttCompletion({
     final completer = Completer<bool>();
 
     // Listen for messages
-    client.updates!.listen((List<MqttReceivedMessage<MqttMessage>> messages) {
+    client.updates.listen((List<MqttReceivedMessage<MqttMessage>> messages) {
       for (final message in messages) {
         final payload = message.payload as MqttPublishMessage;
         final messageBytes = payload.payload.message;
@@ -355,7 +360,9 @@ Future<bool?> _waitForMqttCompletion({
           final data = json['data'] as Map<String, dynamic>?;
 
           // Check if this is job completion event for our job
-          if (eventType == 'job_completed' && data != null && data['job_id'] == jobId) {
+          if (eventType == 'job_completed' &&
+              data != null &&
+              data['job_id'] == jobId) {
             print('   ✅ Received job_completed event via MQTT');
             if (!completer.isCompleted) {
               completer.complete(true);
@@ -378,13 +385,13 @@ Future<bool?> _waitForMqttCompletion({
     // Wait for either completion or timeout
     final result = await Future.any([completer.future, timeoutFuture]);
     return result;
-
   } catch (e) {
     print('   ⚠️  MQTT error: $e');
     return null;
   } finally {
     // Clean up
-    if (client != null && client.connectionStatus?.state == MqttConnectionState.connected) {
+    if (client != null &&
+        client.connectionStatus?.state == MqttConnectionState.connected) {
       client.disconnect();
     }
   }
