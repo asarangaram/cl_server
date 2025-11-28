@@ -517,24 +517,39 @@ class MediaStoreClient {
         queryParameters: queryParams,
       );
 
+      Map<String, dynamic> versionData;
+
       if (response is Map<String, dynamic>) {
-        // Version metadata response contains minimal fields
-        // Add required defaults so Entity.fromJson doesn't fail
-        if (!response.containsKey('id')) {
-          response['id'] = entityId;
+        // Direct response with version data
+        versionData = response;
+      } else if (response is List && response.isNotEmpty) {
+        // Response is a list, get the first item
+        final item = response[0];
+        if (item is Map<String, dynamic>) {
+          versionData = item;
+        } else {
+          throw ValidationException(
+            message: 'Unexpected version item format',
+          );
         }
-        if (!response.containsKey('is_collection')) {
-          response['is_collection'] = false; // Default for version data
-        }
-        if (!response.containsKey('label')) {
-          response['label'] = 'Version ${response['version'] ?? 'unknown'}';
-        }
-        return Entity.fromJson(response);
+      } else {
+        throw ValidationException(
+          message: 'Unexpected response format for version info',
+        );
       }
 
-      throw ValidationException(
-        message: 'Unexpected response format for version info',
-      );
+      // Version metadata response contains minimal fields
+      // Add required defaults so Entity.fromJson doesn't fail
+      if (!versionData.containsKey('id')) {
+        versionData['id'] = entityId;
+      }
+      if (!versionData.containsKey('is_collection')) {
+        versionData['is_collection'] = false; // Default for version data
+      }
+      // Don't set a default label if it's missing - Entity.fromJson will handle it
+      // The label from the version data should be preserved
+
+      return Entity.fromJson(versionData);
     } catch (e) {
       if (e is CLServerException) {
         rethrow;
