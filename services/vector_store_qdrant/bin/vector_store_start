@@ -5,6 +5,12 @@
 
 set -e
 
+# Load function
+source "$(dirname "$0")/docker_check.sh"
+
+# Ensure Docker is running
+ensure_docker_running || exit 1
+
 # Get the directory where this script is located
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 QDRANT_DIR="$(dirname "$SCRIPT_DIR")"  # qdrant_docker directory
