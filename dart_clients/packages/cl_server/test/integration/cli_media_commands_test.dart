@@ -2,6 +2,28 @@ import 'package:test/test.dart';
 import 'package:cl_server/cl_server.dart';
 import 'dart:io';
 
+/// Create a unique copy of a fixture file with modified content to avoid MD5 duplicate detection
+Future<File> createUniqueTestFile(String fixtureFile, String testName) async {
+  final fixture = File(fixtureFile);
+  if (!await fixture.exists()) {
+    throw Exception('Fixture file not found: $fixtureFile');
+  }
+
+  final bytes = await fixture.readAsBytes();
+  final timestamp = DateTime.now().millisecondsSinceEpoch;
+  final uniquePath = fixtureFile.replaceFirst(RegExp(r'\.([^.]+)$'), '_cli_$testName\_$timestamp.\$1');
+
+  // Modify the content slightly to create a unique MD5
+  // Add a unique metadata marker at the end
+  final uniqueBytes = [...bytes];
+  final uniqueMarker = 'CLI_TEST_ID_$testName\_$timestamp'.codeUnits;
+  uniqueBytes.addAll(uniqueMarker);
+
+  final uniqueFile = File(uniquePath);
+  await uniqueFile.writeAsBytes(uniqueBytes);
+  return uniqueFile;
+}
+
 void main() {
   late AuthClient authClient;
   late MediaStoreClient mediaStoreClient;
@@ -89,54 +111,60 @@ void main() {
     });
 
     test('CLI: Upload file via media command', () async {
-      // Use MP4 file to avoid duplicate detection with other JPG uploads
-      final testFile = File('test/fixtures/test_video.mp4');
-      if (!await testFile.exists()) {
-        return; // Skip if file not found
-      }
+      // Create unique file to avoid duplicate detection
+      final testFile = await createUniqueTestFile(
+        'test/fixtures/test_video.mp4',
+        'upload_command',
+      );
 
       // Create parent collection for file
       final container = await mediaStoreClient.createCollection(
         token: adminToken,
-        label: 'CLI Upload Container MP4',
+        label: 'CLI Upload Container',
       );
 
-      // Simulate CLI command: media upload /path/to/file.mp4 --name "My Media"
+      // Simulate CLI command: media upload /path/to/file.mp4 --name "My Photo"
       final uploaded = await mediaStoreClient.createEntity(
         token: adminToken,
-        label: 'My Media',
+        label: 'My Photo',
         file: testFile,
         parentId: container.id,
       );
 
       expect(uploaded.id, isNotNull);
-      expect(uploaded.label, equals('My Media'));
+      expect(uploaded.label, equals('My Photo'));
       expect(uploaded.isCollection, isFalse);
       expect(uploaded.fileSize, greaterThan(0));
+
+      // Clean up
+      await testFile.delete();
     });
 
     test('CLI: Upload file with parent collection', () async {
-      // Use MOV file to avoid duplicate detection
-      final testFile = File('test/fixtures/test_video.mov');
-      if (!await testFile.exists()) {
-        return; // Skip if file not found
-      }
+      // Create unique file to avoid duplicate detection
+      final testFile = await createUniqueTestFile(
+        'test/fixtures/test_video.mov',
+        'upload_parent',
+      );
 
       // Create parent collection
       final parent = await mediaStoreClient.createCollection(
         token: adminToken,
-        label: 'CLI Upload Parent MOV',
+        label: 'CLI Upload Parent',
       );
 
       // Simulate CLI command: media upload /path/to/file.mov --parent <parent_id>
       final uploaded = await mediaStoreClient.createEntity(
         token: adminToken,
-        label: 'Uploaded to Parent MOV',
+        label: 'Uploaded to Parent',
         file: testFile,
         parentId: parent.id,
       );
 
       expect(uploaded.parentId, equals(parent.id));
+
+      // Clean up
+      await testFile.delete();
     });
 
     test('CLI: Patch entity label', () async {
@@ -388,10 +416,11 @@ void main() {
     });
 
     test('CLI: Full workflow - create, upload, update, version', () async {
-      final testFile = File('test/fixtures/test_image.png');
-      if (!await testFile.exists()) {
-        return; // Skip if file not found
-      }
+      // Create unique file to avoid duplicate detection
+      final testFile = await createUniqueTestFile(
+        'test/fixtures/test_image.png',
+        'full_workflow',
+      );
 
       // Create collection
       final folder = await mediaStoreClient.createCollection(
@@ -427,6 +456,9 @@ void main() {
       );
 
       expect(versions.length, greaterThanOrEqualTo(2)); // Creation + patch
+
+      // Clean up
+      await testFile.delete();
     });
   });
 }
