@@ -1,8 +1,8 @@
 /// Configuration response for media store admin settings
 class ConfigResponse {
   final bool readAuthEnabled;
-  final DateTime? updatedAt;
-  final int? updatedBy;
+  final int? updatedAt;
+  final String? updatedBy;
 
   ConfigResponse({
     required this.readAuthEnabled,
@@ -14,10 +14,8 @@ class ConfigResponse {
   factory ConfigResponse.fromJson(Map<String, dynamic> json) {
     return ConfigResponse(
       readAuthEnabled: json['read_auth_enabled'] as bool,
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'] as String)
-          : null,
-      updatedBy: json['updated_by'] as int?,
+      updatedAt: json['updated_at'] as int?,
+      updatedBy: json['updated_by'] as String?,
     );
   }
 
@@ -25,7 +23,7 @@ class ConfigResponse {
   Map<String, dynamic> toJson() {
     return {
       'read_auth_enabled': readAuthEnabled,
-      'updated_at': updatedAt?.toIso8601String(),
+      'updated_at': updatedAt,
       'updated_by': updatedBy,
     };
   }

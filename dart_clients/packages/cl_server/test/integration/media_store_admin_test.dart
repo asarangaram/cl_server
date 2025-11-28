@@ -16,16 +16,17 @@ void main() {
     adminToken = adminTokenResponse.accessToken;
 
     // Create a regular user for testing
+    final testUsername = 'testuser_${DateTime.now().millisecondsSinceEpoch}';
     await authClient.createUser(
       token: adminToken,
-      username: 'testuser_${DateTime.now().millisecondsSinceEpoch}',
+      username: testUsername,
       password: 'testpass123',
       permissions: ['read'],
     );
 
     // Login as regular user
     final userTokenResponse = await authClient.login(
-      'testuser_${DateTime.now().millisecondsSinceEpoch}',
+      testUsername,
       'testpass123',
     );
     regularUserToken = userTokenResponse.accessToken;
@@ -60,9 +61,9 @@ void main() {
         token: adminToken,
       );
 
-      // May have updated_at timestamp
-      expect(config.updatedAt, anyOf(isNull, isA<DateTime>()));
-      expect(config.updatedBy, anyOf(isNull, isA<int>()));
+      // May have updated_at timestamp (milliseconds since epoch)
+      expect(config.updatedAt, anyOf(isNull, isA<int>()));
+      expect(config.updatedBy, anyOf(isNull, isA<String>()));
     });
 
     test('Set read auth to true', () async {
@@ -130,7 +131,7 @@ void main() {
       // Timestamp should be updated (if service tracks it)
       expect(after.updatedAt, anyOf(
         isNull,
-        isA<DateTime>(),
+        isA<int>(),
       ));
     });
 
@@ -140,11 +141,11 @@ void main() {
         readAuthEnabled: true,
       );
 
-      // updatedBy should indicate admin user
-      expect(config.updatedBy, anyOf(isNull, isA<int>()));
-      // If it's set, should be admin user ID (usually 1)
+      // updatedBy should indicate admin user (as user ID string)
+      expect(config.updatedBy, anyOf(isNull, isA<String>()));
+      // If it's set, should be a non-empty string
       if (config.updatedBy != null) {
-        expect(config.updatedBy, greaterThan(0));
+        expect(config.updatedBy, isNotEmpty);
       }
     });
 
@@ -162,7 +163,7 @@ void main() {
           readAuthEnabled: !config.readAuthEnabled,
         );
 
-        expect(config.readAuthEnabled, isNotEqualTo(initialState == (i % 2 == 0)));
+        expect(config.readAuthEnabled, isNot(equals(initialState == (i % 2 == 0))));
       }
     });
 

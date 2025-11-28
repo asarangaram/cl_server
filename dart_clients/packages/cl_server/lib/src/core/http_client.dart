@@ -47,10 +47,17 @@ class CLHttpClient {
       http.Response response;
 
       if (isFormData && body is Map<String, String>) {
-        response = await http.post(
+        // URL-encode the form data manually to ensure compatibility
+        final encodedBody = body.entries
+            .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+            .join('&');
+        // For form data, set Content-Type explicitly
+        final formHeaders = Map<String, String>.from(headers);
+        formHeaders['Content-Type'] = 'application/x-www-form-urlencoded; charset=utf-8';
+        response = await _httpClient.post(
           uri,
-          headers: headers,
-          body: body,
+          headers: formHeaders,
+          body: encodedBody,
         ).timeout(requestTimeout);
       } else if (isFormData && body is String) {
         // Form-urlencoded string

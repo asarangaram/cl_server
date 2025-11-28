@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../core/http_client.dart';
 import '../core/models/entity.dart';
 import '../core/models/pagination.dart';
@@ -153,6 +155,15 @@ class MediaStoreClient {
         queryParameters: queryParams,
       );
 
+      // Handle paginated response format {items: [...], pagination: {...}}
+      if (response is Map<String, dynamic> && response.containsKey('items')) {
+        final items = response['items'] as List;
+        return items
+            .map((entity) => Entity.fromJson(entity as Map<String, dynamic>))
+            .toList();
+      }
+
+      // Fallback: handle plain list response
       if (response is List) {
         return response
             .map((entity) => Entity.fromJson(entity as Map<String, dynamic>))
@@ -241,20 +252,30 @@ class MediaStoreClient {
           return Entity.fromJson(response);
         }
       } else {
-        // Update without file
-        final body = {
-          'label': label,
-          'is_collection': isCollection,
-          if (description != null) 'description': description,
-          if (parentId != null) 'parent_id': parentId,
-        };
+        // Update without file - send as multipart form-data (no file)
+        final uri = Uri.parse('${_httpClient.baseUrl}/entity/$entityId');
+        final request = http.MultipartRequest('PUT', uri);
 
-        final response = await _httpClient.put(
-          '/entity/$entityId',
-          body: body,
-          token: token,
-        );
+        request.headers['Authorization'] = 'Bearer $token';
+        request.fields['is_collection'] = isCollection.toString();
+        request.fields['label'] = label;
+        if (description != null) {
+          request.fields['description'] = description;
+        }
+        if (parentId != null) {
+          request.fields['parent_id'] = parentId.toString();
+        }
 
+        final streamedResponse = await request.send()
+            .timeout(_httpClient.requestTimeout ?? const Duration(seconds: 30));
+
+        final responseBody = await streamedResponse.stream.bytesToString();
+
+        if (streamedResponse.statusCode >= 400) {
+          _handleErrorResponse(streamedResponse.statusCode, responseBody);
+        }
+
+        final response = jsonDecode(responseBody);
         if (response is Map<String, dynamic>) {
           return Entity.fromJson(response);
         }
@@ -286,32 +307,32 @@ class MediaStoreClient {
       _validateToken(token);
 
       if (file != null) {
-        // Patch with file upload
-        final response = await _fileUploader.uploadFile(
+        // File uploads use PUT method, not PATCH
+        // Redirect to updateEntity which uses PUT with multipart form-data
+        return updateEntity(
           token: token,
-          label: label,
-          file: file,
+          entityId: entityId,
+          label: label ?? 'File Update',
+          isCollection: false,
           description: description,
           parentId: parentId,
-          endpoint: '/entity/$entityId',
-          method: 'PATCH',
+          file: file,
         );
-
-        if (response is Map<String, dynamic>) {
-          return Entity.fromJson(response);
-        }
       } else {
         // Patch without file
-        final body = <String, dynamic>{};
-        if (label != null) body['label'] = label;
-        if (description != null) body['description'] = description;
-        if (parentId != null) body['parent_id'] = parentId;
+        final bodyFields = <String, dynamic>{};
+        if (label != null) bodyFields['label'] = label;
+        if (description != null) bodyFields['description'] = description;
+        if (parentId != null) bodyFields['parent_id'] = parentId;
 
-        if (body.isEmpty) {
+        if (bodyFields.isEmpty) {
           throw ValidationException(
             message: 'At least one field must be provided for patch',
           );
         }
+
+        // Wrap in 'body' key for FastAPI embed=True
+        final body = {'body': bodyFields};
 
         final response = await _httpClient.patch(
           '/entity/$entityId',
@@ -435,9 +456,22 @@ class MediaStoreClient {
       );
 
       if (response is List) {
-        return response
-            .map((entity) => Entity.fromJson(entity as Map<String, dynamic>))
-            .toList();
+        try {
+          return response
+              .map((versionData) {
+                // Ensure id field exists for Entity parsing
+                final data = versionData as Map<String, dynamic>;
+                if (!data.containsKey('id')) {
+                  data['id'] = entityId;
+                }
+                return Entity.fromJson(data);
+              })
+              .toList();
+        } catch (e) {
+          throw ValidationException(
+            message: 'Failed to parse version data: $e',
+          );
+        }
       }
 
       throw ValidationException(
@@ -471,6 +505,10 @@ class MediaStoreClient {
       );
 
       if (response is Map<String, dynamic>) {
+        // Ensure id field exists for Entity parsing
+        if (!response.containsKey('id')) {
+          response['id'] = entityId;
+        }
         return Entity.fromJson(response);
       }
 
@@ -525,10 +563,10 @@ class MediaStoreClient {
     try {
       _validateToken(token);
 
-      final body = {'read_auth_enabled': readAuthEnabled};
+      final body = {'enabled': readAuthEnabled};
 
       final response = await _httpClient.put(
-        '/admin/config',
+        '/admin/config/read-auth',
         body: body,
         token: token,
       );
@@ -558,6 +596,37 @@ class MediaStoreClient {
   void _validateToken(String token) {
     // Token validation can be added if needed
     // For now, trust that the server will validate the token
+  }
+
+  /// Handle error responses from HTTP requests
+  void _handleErrorResponse(int statusCode, String responseBody) {
+    try {
+      final errorData = jsonDecode(responseBody);
+      if (errorData is Map<String, dynamic> && errorData.containsKey('detail')) {
+        throw CLServerException(
+          message: errorData['detail'] ?? 'Unknown error',
+          statusCode: statusCode,
+        );
+      } else if (errorData is List) {
+        throw CLServerException(
+          message: jsonEncode(errorData),
+          statusCode: statusCode,
+        );
+      } else {
+        throw CLServerException(
+          message: errorData.toString(),
+          statusCode: statusCode,
+        );
+      }
+    } catch (e) {
+      if (e is CLServerException) {
+        rethrow;
+      }
+      throw CLServerException(
+        message: 'HTTP $statusCode: $responseBody',
+        statusCode: statusCode,
+      );
+    }
   }
 
   /// Close the HTTP client

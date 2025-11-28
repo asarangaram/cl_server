@@ -41,11 +41,18 @@ void main() {
 
   group('Media Store - File Upload Operations', () {
     test('Upload JPG image file', () async {
+      // Create parent collection for file
+      final collection = await mediaStoreClient.createCollection(
+        token: adminToken,
+        label: 'JPG Upload Container',
+      );
+
       final entity = await mediaStoreClient.createEntity(
         token: adminToken,
         label: 'Test JPG Image',
         file: jpgFile,
         description: 'A test JPG image',
+        parentId: collection.id,
       );
 
       expect(entity, isNotNull);
@@ -58,10 +65,17 @@ void main() {
     });
 
     test('Upload PNG image file', () async {
+      // Create parent collection for file
+      final collection = await mediaStoreClient.createCollection(
+        token: adminToken,
+        label: 'PNG Upload Container',
+      );
+
       final entity = await mediaStoreClient.createEntity(
         token: adminToken,
         label: 'Test PNG Image',
         file: pngFile,
+        parentId: collection.id,
       );
 
       expect(entity.label, equals('Test PNG Image'));
@@ -71,11 +85,18 @@ void main() {
     });
 
     test('Upload MP4 video file', () async {
+      // Create parent collection for file
+      final collection = await mediaStoreClient.createCollection(
+        token: adminToken,
+        label: 'MP4 Upload Container',
+      );
+
       final entity = await mediaStoreClient.createEntity(
         token: adminToken,
         label: 'Test MP4 Video',
         file: mp4File,
         description: 'A test MP4 video',
+        parentId: collection.id,
       );
 
       expect(entity.label, equals('Test MP4 Video'));
@@ -85,10 +106,17 @@ void main() {
     });
 
     test('Upload MOV video file', () async {
+      // Create parent collection for file
+      final collection = await mediaStoreClient.createCollection(
+        token: adminToken,
+        label: 'MOV Upload Container',
+      );
+
       final entity = await mediaStoreClient.createEntity(
         token: adminToken,
         label: 'Test MOV Video',
         file: movFile,
+        parentId: collection.id,
       );
 
       expect(entity.label, equals('Test MOV Video'));
@@ -97,10 +125,17 @@ void main() {
     });
 
     test('Uploaded file has MD5 hash', () async {
+      // Create parent collection for file
+      final collection = await mediaStoreClient.createCollection(
+        token: adminToken,
+        label: 'MD5 Test Container',
+      );
+
       final entity = await mediaStoreClient.createEntity(
         token: adminToken,
         label: 'MD5 Test File',
         file: jpgFile,
+        parentId: collection.id,
       );
 
       expect(entity.md5, isNotNull);
@@ -110,10 +145,17 @@ void main() {
     });
 
     test('Uploaded file has file path', () async {
+      // Create parent collection for file
+      final collection = await mediaStoreClient.createCollection(
+        token: adminToken,
+        label: 'Path Test Container',
+      );
+
       final entity = await mediaStoreClient.createEntity(
         token: adminToken,
         label: 'Path Test File',
         file: jpgFile,
+        parentId: collection.id,
       );
 
       expect(entity.filePath, isNotNull);
@@ -123,29 +165,49 @@ void main() {
     });
 
     test('Duplicate file upload returns 409 Conflict', () async {
+      // Create parent collection for file
+      final collection = await mediaStoreClient.createCollection(
+        token: adminToken,
+        label: 'Duplicate Test Container',
+      );
+
       // Upload a file
       final entity1 = await mediaStoreClient.createEntity(
         token: adminToken,
         label: 'First Upload',
         file: jpgFile,
+        parentId: collection.id,
       );
 
-      // Try to upload the same file again
+      // Try to upload the same file again to a different collection
+      final collection2 = await mediaStoreClient.createCollection(
+        token: adminToken,
+        label: 'Duplicate Test Container 2',
+      );
+
       expect(
         () => mediaStoreClient.createEntity(
           token: adminToken,
           label: 'Duplicate Upload',
           file: jpgFile,
+          parentId: collection2.id,
         ),
         throwsA(isA<DuplicateResourceException>()),
       );
     });
 
     test('Image file has dimensions extracted', () async {
+      // Create parent collection for file
+      final collection = await mediaStoreClient.createCollection(
+        token: adminToken,
+        label: 'Dimensions Test Container',
+      );
+
       final entity = await mediaStoreClient.createEntity(
         token: adminToken,
         label: 'Dimensions Test',
         file: pngFile,
+        parentId: collection.id,
       );
 
       // For images, height and width should be extracted
@@ -154,10 +216,17 @@ void main() {
     });
 
     test('Video file may have duration', () async {
+      // Create parent collection for file
+      final collection = await mediaStoreClient.createCollection(
+        token: adminToken,
+        label: 'Duration Test Container',
+      );
+
       final entity = await mediaStoreClient.createEntity(
         token: adminToken,
         label: 'Duration Test',
         file: mp4File,
+        parentId: collection.id,
       );
 
       // Duration may or may not be extracted depending on video validity
@@ -183,11 +252,18 @@ void main() {
     });
 
     test('Update entity with new file', () async {
+      // Create parent collection for file
+      final collection = await mediaStoreClient.createCollection(
+        token: adminToken,
+        label: 'Update File Container',
+      );
+
       // Create initial entity with JPG
       final initial = await mediaStoreClient.createEntity(
         token: adminToken,
         label: 'Update File Test',
         file: jpgFile,
+        parentId: collection.id,
       );
 
       final initialMd5 = initial.md5;
@@ -200,17 +276,24 @@ void main() {
       );
 
       // MD5 should be different
-      expect(updated.md5, isNotEqualTo(initialMd5));
+      expect(updated.md5, isNot(equals(initialMd5)));
       // MIME type should be PNG
       expect(updated.mimeType, contains('png'));
     });
 
     test('Deleted entity removes file', () async {
+      // Create parent collection for file
+      final collection = await mediaStoreClient.createCollection(
+        token: adminToken,
+        label: 'Delete File Container',
+      );
+
       // Upload file
       final entity = await mediaStoreClient.createEntity(
         token: adminToken,
         label: 'Delete File Test',
         file: jpgFile,
+        parentId: collection.id,
       );
 
       final filePath = entity.filePath;
@@ -232,10 +315,17 @@ void main() {
     });
 
     test('File integrity check via MD5', () async {
+      // Create parent collection for file
+      final collection = await mediaStoreClient.createCollection(
+        token: adminToken,
+        label: 'Integrity Check Container',
+      );
+
       final entity = await mediaStoreClient.createEntity(
         token: adminToken,
         label: 'Integrity Check',
         file: jpgFile,
+        parentId: collection.id,
       );
 
       // Calculate local MD5
@@ -247,28 +337,37 @@ void main() {
     });
 
     test('Multiple file uploads in sequence', () async {
+      // Create parent collection for files
+      final collection = await mediaStoreClient.createCollection(
+        token: adminToken,
+        label: 'Sequence Upload Container',
+      );
+
       final jpg = await mediaStoreClient.createEntity(
         token: adminToken,
         label: 'Sequence JPG',
         file: jpgFile,
+        parentId: collection.id,
       );
 
       final png = await mediaStoreClient.createEntity(
         token: adminToken,
         label: 'Sequence PNG',
         file: pngFile,
+        parentId: collection.id,
       );
 
       final mp4 = await mediaStoreClient.createEntity(
         token: adminToken,
         label: 'Sequence MP4',
         file: mp4File,
+        parentId: collection.id,
       );
 
       // All should have unique IDs
-      expect(jpg.id, isNotEqual(png.id));
-      expect(png.id, isNotEqual(mp4.id));
-      expect(jpg.id, isNotEqual(mp4.id));
+      expect(jpg.id, isNot(equals(png.id)));
+      expect(png.id, isNot(equals(mp4.id)));
+      expect(jpg.id, isNot(equals(mp4.id)));
 
       // All should have correct MIME types
       expect(jpg.mimeType, contains('jpeg'));

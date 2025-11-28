@@ -94,11 +94,18 @@ void main() {
         return; // Skip if file not found
       }
 
+      // Create parent collection for file
+      final container = await mediaStoreClient.createCollection(
+        token: adminToken,
+        label: 'CLI Upload Container',
+      );
+
       // Simulate CLI command: media upload /path/to/file.jpg --name "My Photo"
       final uploaded = await mediaStoreClient.createEntity(
         token: adminToken,
         label: 'My Photo',
         file: testFile,
+        parentId: container.id,
       );
 
       expect(uploaded.id, isNotNull);
@@ -272,11 +279,24 @@ void main() {
         return; // Skip if file not found
       }
 
+      // Create parent collection for files
+      final container = await mediaStoreClient.createCollection(
+        token: adminToken,
+        label: 'CLI Duplicate Test Container',
+      );
+
       // First upload
       await mediaStoreClient.createEntity(
         token: adminToken,
         label: 'First Upload',
         file: testFile,
+        parentId: container.id,
+      );
+
+      // Create second collection for duplicate upload test
+      final container2 = await mediaStoreClient.createCollection(
+        token: adminToken,
+        label: 'CLI Duplicate Test Container 2',
       );
 
       // Second upload of same file should fail
@@ -285,6 +305,7 @@ void main() {
           token: adminToken,
           label: 'Duplicate Upload',
           file: testFile,
+          parentId: container2.id,
         ),
         throwsA(isA<DuplicateResourceException>()),
       );
@@ -301,23 +322,32 @@ void main() {
         return; // Skip if files not found
       }
 
+      // Create parent collection for files
+      final container = await mediaStoreClient.createCollection(
+        token: adminToken,
+        label: 'CLI Format Test Container',
+      );
+
       // Simulate uploading different file types
       final jpg = await mediaStoreClient.createEntity(
         token: adminToken,
         label: 'CLI JPG',
         file: jpgFile,
+        parentId: container.id,
       );
 
       final png = await mediaStoreClient.createEntity(
         token: adminToken,
         label: 'CLI PNG',
         file: pngFile,
+        parentId: container.id,
       );
 
       final mp4 = await mediaStoreClient.createEntity(
         token: adminToken,
         label: 'CLI MP4',
         file: mp4File,
+        parentId: container.id,
       );
 
       expect(jpg.extension, anyOf('jpg', 'jpeg'));

@@ -207,11 +207,18 @@ void main() {
     });
 
     test('File upload creates version', () async {
+      // Create parent collection for file
+      final collection = await mediaStoreClient.createCollection(
+        token: adminToken,
+        label: 'File Version Container',
+      );
+
       // Upload file
       final entity = await mediaStoreClient.createEntity(
         token: adminToken,
         label: 'File Version Test',
         file: pngFile,
+        parentId: collection.id,
       );
 
       // Get versions
@@ -225,11 +232,18 @@ void main() {
     });
 
     test('File replacement creates new version', () async {
+      // Create parent collection for file
+      final collection = await mediaStoreClient.createCollection(
+        token: adminToken,
+        label: 'File Replace Container',
+      );
+
       // Upload initial file
       var entity = await mediaStoreClient.createEntity(
         token: adminToken,
         label: 'File Replace Test',
         file: pngFile,
+        parentId: collection.id,
       );
 
       final initialMd5 = entity.md5;
@@ -256,7 +270,7 @@ void main() {
       // Should have more versions
       expect(versionsV2.length, greaterThan(versionsV1.length));
       // File should have changed (different MD5)
-      expect(entity.md5, isNotEqualTo(initialMd5));
+      expect(entity.md5, isNot(equals(initialMd5)));
     });
 
     test('Version with different label', () async {
