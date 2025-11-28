@@ -41,24 +41,53 @@ class EntityService:
     def _extract_metadata(self, file_bytes: bytes, filename: str = "file") -> Dict:
         """
         Extract metadata from file using CLMetaData.
-        
+
         Args:
             file_bytes: File content as bytes
             filename: Original filename for extension detection
-            
+
         Returns:
             Dictionary containing file metadata
         """
+        import mimetypes
+
         # Create temporary file for CLMetaData processing
         with tempfile.NamedTemporaryFile(delete=False, suffix=Path(filename).suffix) as tmp_file:
             tmp_file.write(file_bytes)
             tmp_path = tmp_file.name
-        
+
         try:
             # Extract metadata using CLMetaData
-            cl_metadata = CLMetaData.from_media(tmp_path)
-            metadata = cl_metadata.to_dict()
-            
+            try:
+                cl_metadata = CLMetaData.from_media(tmp_path)
+                metadata = cl_metadata.to_dict()
+            except Exception as e:
+                # If CLMetaData fails (e.g., invalid image), return minimal metadata with file size
+                import hashlib
+                print(f"Warning: CLMetaData extraction failed for {filename}: {e}")
+                ext = Path(filename).suffix.lstrip('.').lower()
+                mime_type, _ = mimetypes.guess_type(filename)
+
+                # Compute MD5 hash for duplicate detection
+                md5_hash = hashlib.md5(file_bytes).hexdigest()
+
+                metadata = {
+                    "extension": ext,
+                    "FileSize": len(file_bytes),
+                    "md5": md5_hash,
+                }
+                if mime_type:
+                    metadata["MIMEType"] = mime_type
+
+            # Ensure file size is always present (handle both FileSize and file_size keys)
+            if "FileSize" not in metadata or not metadata["FileSize"]:
+                metadata["FileSize"] = len(file_bytes)
+
+            # Ensure MD5 is computed if not present
+            if "md5" not in metadata or not metadata["md5"]:
+                import hashlib
+                metadata["md5"] = hashlib.md5(file_bytes).hexdigest()
+
             # Convert CreateDate to timestamp (ms) if present
             if "CreateDate" in metadata and metadata["CreateDate"]:
                 try:
@@ -68,7 +97,7 @@ class EntityService:
                 except ValueError:
                     # Fallback or ignore if format is different
                     pass
-                    
+
             return metadata
         finally:
             # Clean up temporary file

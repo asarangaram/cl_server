@@ -22,14 +22,14 @@ void main() {
       token: adminToken,
       username: 'user_with_write_${DateTime.now().millisecondsSinceEpoch}',
       password: 'password123',
-      permissions: ['read', 'write'],
+      permissions: ['media_store_read', 'media_store_write'],
     );
 
     final userWithoutWrite = await authClient.createUser(
       token: adminToken,
       username: 'user_no_write_${DateTime.now().millisecondsSinceEpoch}',
       password: 'password123',
-      permissions: ['read'],
+      permissions: ['media_store_read'],
     );
 
     final readOnlyUser = await authClient.createUser(
@@ -353,7 +353,7 @@ void main() {
           token: adminToken,
           username: 'perm_test_${DateTime.now().millisecondsSinceEpoch}',
           password: 'pass',
-          permissions: ['read', 'write'],
+          permissions: ['media_store_read', 'media_store_write'],
         );
 
         // Login
@@ -372,7 +372,7 @@ void main() {
         await authClient.updateUser(
           token: adminToken,
           userId: user.id,
-          permissions: ['read'], // Remove 'write'
+          permissions: ['media_store_read'], // Remove 'media_store_write'
         );
 
         // Re-login to get new token

@@ -83,13 +83,21 @@ class FileUploader {
     request.headers['Authorization'] = 'Bearer $token';
 
     // Add form fields based on HTTP method
-    // PUT requires is_collection, PATCH does not
-    if (method.toUpperCase() == 'PUT') {
+    final methodUpper = method.toUpperCase();
+
+    if (methodUpper == 'PUT') {
+      // PUT requires is_collection and label
       request.fields['is_collection'] = isCollection.toString();
       if (label != null) {
         request.fields['label'] = label;
       }
-    } else if (method.toUpperCase() == 'PATCH') {
+    } else if (methodUpper == 'POST') {
+      // POST (create) requires is_collection
+      request.fields['is_collection'] = isCollection.toString();
+      if (label != null) {
+        request.fields['label'] = label;
+      }
+    } else if (methodUpper == 'PATCH') {
       // PATCH only sends the fields being updated
       if (label != null) {
         request.fields['label'] = label;

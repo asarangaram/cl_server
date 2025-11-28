@@ -388,7 +388,10 @@ class MediaStoreClient {
     try {
       _validateToken(token);
 
-      final body = {'is_deleted': true};
+      // Wrap in 'body' key for FastAPI embed=True
+      final body = {
+        'body': {'is_deleted': true}
+      };
 
       final response = await _httpClient.patch(
         '/entity/$entityId',
@@ -459,11 +462,21 @@ class MediaStoreClient {
         try {
           return response
               .map((versionData) {
-                // Ensure id field exists for Entity parsing
+                // Version metadata response contains minimal fields
+                // Add required defaults so Entity.fromJson doesn't fail
                 final data = versionData as Map<String, dynamic>;
+
+                // Ensure required fields for Entity parsing
                 if (!data.containsKey('id')) {
                   data['id'] = entityId;
                 }
+                if (!data.containsKey('is_collection')) {
+                  data['is_collection'] = false; // Default for version data
+                }
+                if (!data.containsKey('label')) {
+                  data['label'] = 'Version ${data['version'] ?? 'unknown'}';
+                }
+
                 return Entity.fromJson(data);
               })
               .toList();
@@ -505,9 +518,16 @@ class MediaStoreClient {
       );
 
       if (response is Map<String, dynamic>) {
-        // Ensure id field exists for Entity parsing
+        // Version metadata response contains minimal fields
+        // Add required defaults so Entity.fromJson doesn't fail
         if (!response.containsKey('id')) {
           response['id'] = entityId;
+        }
+        if (!response.containsKey('is_collection')) {
+          response['is_collection'] = false; // Default for version data
+        }
+        if (!response.containsKey('label')) {
+          response['label'] = 'Version ${response['version'] ?? 'unknown'}';
         }
         return Entity.fromJson(response);
       }
