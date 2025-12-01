@@ -103,16 +103,40 @@ Python Project
 [./media_store/src/routes.py](./media_store/src/routes.py)
 [./inference/src/routes.py](./inference/src/routes.py)
 [./authentication/src/routes.py](./authentication/src/routes.py)
+* root '/'
+* login_for_access_token "/auth/token"
+* get_public_key "/auth/public-key"
+* read_users_me  "/users/me"
+* read_users "/users/"
+* read_user "/users/{user_id}"
+
+* create_user  "/users/"
+* update_user "/users/{user_id}"
+* delete_user "/users/{user_id}"
+
 
 ### auth specific
 
 [./authentication/src/auth_utils.py](./authentication/src/auth_utils.py)
+* create_access_token
+* decode_token
+* get_password_hash
+* verify_password
+* get_keys
+
 [./media_store/src/auth.py](./media_store/src/auth.py)
 [./inference/src/auth.py](./inference/src/auth.py)
 
 ### services
 
 [./media_store/src/service.py](./media_store/src/service.py)
+* get_user_by_id
+* get_user_by_username
+* get_users
+* create_user
+* update_user
+* delete_user
+
 [./authentication/src/service.py](./authentication/src/service.py)
 [./inference/src/job_service.py](./inference/src/job_service.py)
 
@@ -172,30 +196,30 @@ This plan provides a structured approach to manually review the entire CoLAN Ser
 
 **Files to Review:**
 
-- [ ] [`services/authentication/main.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/authentication/main.py)
-- [ ] [`services/authentication/src/models.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/authentication/src/models.py)
-- [ ] [`services/authentication/src/service.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/authentication/src/service.py)
-- [ ] [`services/authentication/src/routes.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/authentication/src/routes.py) (129 lines)
-- [ ] [`services/authentication/src/auth_utils.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/authentication/src/auth_utils.py)
-- [ ] [`services/authentication/src/schemas.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/authentication/src/schemas.py)
+- [x] [`services/authentication/main.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/authentication/main.py)
+- [x] [`services/authentication/src/models.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/authentication/src/models.py)
+- [x] [`services/authentication/src/service.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/authentication/src/service.py)
+- [x] [`services/authentication/src/routes.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/authentication/src/routes.py) (129 lines)
+- [x] [`services/authentication/src/auth_utils.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/authentication/src/auth_utils.py)
+- [x] [`services/authentication/src/schemas.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/authentication/src/schemas.py)
 
 **Review Checklist:**
 
-- [ ] JWT token generation and validation logic
-- [ ] Password hashing implementation (security)
-- [ ] User model and permission model relationships
-- [ ] OAuth2 password flow implementation
-- [ ] Error handling for authentication failures
-- [ ] Database session management
-- [ ] Default admin user creation logic
-- [ ] Environment variable handling (`AUTH_DISABLED`, `ADMIN_USERNAME`, etc.)
+- [x] JWT token generation and validation logic
+- [x] Password hashing implementation (security)
+- [x] User model and permission model relationships
+- [x] OAuth2 password flow implementation
+- [x] Error handling for authentication failures
+- [x] Database session management
+- [x] Default admin user creation logic
+- [x] Environment variable handling (`AUTH_DISABLED`, `ADMIN_USERNAME`, etc.)
 
 **Key Questions:**
 
-- Is the JWT secret key properly secured?
-- Are passwords properly hashed using bcrypt/argon2?
-- Is there proper rate limiting on login attempts?
-- Are permission checks consistent across endpoints?
+- Is the JWT secret key properly secured? YES
+- Are passwords properly hashed using bcrypt/argon2? BCRYPT
+- Is there proper rate limiting on login attempts? NO, pending feature
+- Are permission checks consistent across endpoints? YES
 
 ---
 
@@ -206,16 +230,16 @@ This plan provides a structured approach to manually review the entire CoLAN Ser
 **Files to Review:**
 
 - [ ] [`services/media_store/src/models.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/media_store/src/models.py)
-- [ ] [`services/media_store/src/database.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/media_store/src/database.py)
-- [ ] [`services/media_store/src/versioning.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/media_store/src/versioning.py)
-- [ ] [`services/media_store/src/schemas.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/media_store/src/schemas.py)
+- [x] [`services/media_store/src/database.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/media_store/src/database.py)
+- [x] [`services/media_store/src/versioning.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/media_store/src/versioning.py)
+- [x] [`services/media_store/src/schemas.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/media_store/src/schemas.py)
 - [ ] [`services/media_store/alembic/versions/001_initial_schema.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/media_store/alembic/versions/001_initial_schema.py)
 
 **Review Checklist:**
 
-- [ ] **CRITICAL:** Verify versioning module import order (must be before models)
-- [ ] Entity model fields and relationships
-- [ ] SQLAlchemy-Continuum configuration
+- [x] **CRITICAL:** Verify versioning module import order (must be before models)
+- [x] Entity model fields and relationships
+- [x] SQLAlchemy-Continuum configuration
 - [ ] Timestamp handling (Unix milliseconds format)
 - [ ] Database indexes for performance
 - [ ] Cascade delete behavior
@@ -238,8 +262,8 @@ This plan provides a structured approach to manually review the entire CoLAN Ser
 **Files to Review:**
 
 - [ ] [`services/media_store/src/service.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/media_store/src/service.py) (484 lines - largest file)
-- [ ] [`services/media_store/src/file_storage.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/media_store/src/file_storage.py) (143 lines)
-- [ ] [`services/media_store/src/config_service.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/media_store/src/config_service.py) (147 lines)
+- [x] [`services/media_store/src/file_storage.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/media_store/src/file_storage.py) (143 lines)
+- [x] [`services/media_store/src/config_service.py`](file:///Users/anandasarangaram/Work/github/cl_server/services/media_store/src/config_service.py) (147 lines)
 
 **Review Checklist:**
 
