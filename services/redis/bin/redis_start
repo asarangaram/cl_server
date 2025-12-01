@@ -1,0 +1,71 @@
+#!/bin/bash
+
+# Redis - Start Script
+# Can be run from anywhere
+
+set -e
+
+# Load function
+source "$(dirname "$0")/docker_check.sh"
+
+# Ensure Docker is running
+ensure_docker_running || exit 1
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REDIS_DIR="$(dirname "$SCRIPT_DIR")"  # redis directory
+
+echo "🚀 Starting Redis..."
+
+# Check if CL_SERVER_DIR is set
+if [ -z "$CL_SERVER_DIR" ]; then
+    echo "❌ Error: CL_SERVER_DIR environment variable must be set"
+    echo "   Example: export CL_SERVER_DIR=/path/to/data"
+    exit 1
+fi
+
+# Check if CL_SERVER_DIR has write permission
+if [ ! -w "$CL_SERVER_DIR" ]; then
+    echo "❌ Error: No write permission for CL_SERVER_DIR: $CL_SERVER_DIR"
+    exit 1
+fi
+
+# Check if Docker is running
+if ! docker info > /dev/null 2>&1; then
+    echo "❌ Error: Docker is not running. Please start Docker first."
+    exit 1
+fi
+
+# Create data directory if it doesn't exist
+mkdir -p "$CL_SERVER_DIR/redis/data"
+
+# Start Redis container
+echo "📦 Starting Redis container..."
+cd "$REDIS_DIR"
+docker-compose up -d
+
+# Wait for Redis to be healthy
+echo "⏳ Waiting for Redis to be ready..."
+max_attempts=30
+attempt=0
+
+while [ $attempt -lt $max_attempts ]; do
+    if docker exec cl-server-redis redis-cli ping > /dev/null 2>&1; then
+        echo "✅ Redis is ready!"
+        echo ""
+        echo "📊 Redis: localhost:6379"
+        echo ""
+        echo "💾 Data stored in: $CL_SERVER_DIR/redis/data"
+        echo ""
+        echo "To stop: $SCRIPT_DIR/redis_stop"
+        echo "To view logs: cd $REDIS_DIR && docker-compose logs -f redis"
+        exit 0
+    fi
+
+    attempt=$((attempt + 1))
+    sleep 2
+done
+
+echo "❌ Redis failed to start within 60 seconds"
+echo "Check logs with: cd $REDIS_DIR && docker-compose logs redis"
+exit 1
